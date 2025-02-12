@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualisation DICOM</title>
+    <script src="node_modules/cornerstone-core/dist/cornerstone.min.js"></script>
+    <script src="node_modules/cornerstone-tools/dist/cornerstoneTools.min.js"></script>
+    <script src="node_modules/cornerstone-wado-image-loader/dist/cornerstoneWADOImageLoader.bundle.min.js"></script>
+    <script src="node_modules/dicom-parser/dist/dicomParser.min.js"></script>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div id="dicom-container" style="width: 800px; height: 600px; margin: 0 auto; border: 1px solid black;">
+        <!-- L'image DICOM sera affichée ici -->
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const element = document.getElementById('dicom-container');
+            
+            // Initialisation de Cornerstone
+            cornerstone.enable(element);
+
+            // Associer dicomParser à cornerstoneWADOImageLoader
+            cornerstoneWADOImageLoader.external.cornerstone = cornerstone;
+            cornerstoneWADOImageLoader.external.dicomParser = dicomParser;
+            cornerstoneWADOImageLoader.webWorkerManager.initialize();
+
+            // Initialiser les outils
+            cornerstoneTools.init();
+
+            // Ajouter les outils nécessaires
+            cornerstoneTools.addTool(cornerstoneTools.ZoomTool);  // Outil de zoom
+            cornerstoneTools.addTool(cornerstoneTools.PanTool);   // Outil de pan
+            cornerstoneTools.addTool(cornerstoneTools.WwwcTool);  // Outil de windowing
+
+            // Vérification pour voir si les outils sont ajoutés
+            console.log('Tools:', cornerstoneTools);
+
+            // Activer les outils
+            cornerstoneTools.setToolActive('Zoom', { mouseButtonMask: 1 }); // Clic droit pour zoom
+            cornerstoneTools.setToolActive('Pan', { mouseButtonMask: 2 });  // Clic milieu pour pan
+            cornerstoneTools.setToolActive('Wwwc', { mouseButtonMask: 3 }); // Clic gauche pour windowing
+
+            // Charger l'image DICOM
+            const dicomImageUrl = 'dicom-files/image-00000.dcm'; // Assure-toi que le fichier est dans le bon dossier
+
+            cornerstone.loadImage('wadouri:' + dicomImageUrl).then(function(image) {
+                cornerstone.displayImage(element, image);
+            }).catch(function(err) {
+                console.error('Erreur lors du chargement de l\'image DICOM:', err);
+            });
+
+            // Créer un canvas pour les outils (important pour l'interaction)
+            const canvas = element.querySelector('canvas');
+            if (!canvas) {
+                const newCanvas = document.createElement('canvas');
+                element.appendChild(newCanvas);
+                cornerstone.resize(element); // Redimensionner l'élément pour intégrer le canvas
+            }
+        });
+    </script>
+</body>
+</html>
