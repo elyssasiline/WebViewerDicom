@@ -9,8 +9,34 @@
     <script src="node_modules/cornerstone-wado-image-loader/dist/cornerstoneWADOImageLoader.bundle.min.js"></script>
     <script src="node_modules/dicom-parser/dist/dicomParser.min.js"></script>
     <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .tool-button {
+            padding: 10px;
+            margin: 5px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+
+        .tool-button.active {
+            background-color: #8e8e8e; /* Gris pour l'outil actif */
+        }
+
+        .tool-button.inactive {
+            background-color: #ddd; /* Gris clair pour les boutons inactifs */
+        }
+    </style>
 </head>
 <body>
+    <!-- Conteneur des boutons -->
+    <div id="tools-container" style="margin-bottom: 10px;">
+        <button class="tool-button" id="zoom-button">Zoom</button>
+        <button class="tool-button" id="pan-button">Pan</button>
+        <button class="tool-button" id="wwwc-button">Windowing</button>
+    </div>
+
     <div id="dicom-container" style="width: 800px; height: 600px; margin: 0 auto; border: 1px solid black;">
         <!-- L'image DICOM sera affichée ici -->
     </div>
@@ -18,35 +44,29 @@
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             const element = document.getElementById('dicom-container');
-            
-            // Initialisation de Cornerstone
-            cornerstone.enable(element);
+            const zoomButton = document.getElementById('zoom-button');
+            const panButton = document.getElementById('pan-button');
+            const wwwcButton = document.getElementById('wwwc-button');
 
-            // Associer dicomParser à cornerstoneWADOImageLoader
+            // Initialisation de Cornerstone
+            console.log("Initialisation de Cornerstone...");
+            cornerstone.enable(element);
             cornerstoneWADOImageLoader.external.cornerstone = cornerstone;
             cornerstoneWADOImageLoader.external.dicomParser = dicomParser;
             cornerstoneWADOImageLoader.webWorkerManager.initialize();
 
             // Initialiser les outils
+            console.log("Initialisation des outils...");
             cornerstoneTools.init();
-
-            // Ajouter les outils nécessaires
-            cornerstoneTools.addTool(cornerstoneTools.ZoomTool);  // Outil de zoom
-            cornerstoneTools.addTool(cornerstoneTools.PanTool);   // Outil de pan
-            cornerstoneTools.addTool(cornerstoneTools.WwwcTool);  // Outil de windowing
-
-            // Vérification pour voir si les outils sont ajoutés
-            console.log('Tools:', cornerstoneTools);
-
-            // Activer les outils
-            cornerstoneTools.setToolActive('Zoom', { mouseButtonMask: 1 }); // Clic droit pour zoom
-            cornerstoneTools.setToolActive('Pan', { mouseButtonMask: 2 });  // Clic milieu pour pan
-            cornerstoneTools.setToolActive('Wwwc', { mouseButtonMask: 3 }); // Clic gauche pour windowing
+            cornerstoneTools.addTool(cornerstoneTools.ZoomTool);
+            cornerstoneTools.addTool(cornerstoneTools.PanTool);
+            cornerstoneTools.addTool(cornerstoneTools.WwwcTool);
 
             // Charger l'image DICOM
             const dicomImageUrl = 'dicom-files/image-00000.dcm'; // Assure-toi que le fichier est dans le bon dossier
-
+            console.log("Chargement de l'image DICOM...");
             cornerstone.loadImage('wadouri:' + dicomImageUrl).then(function(image) {
+                console.log("Image DICOM chargée avec succès");
                 cornerstone.displayImage(element, image);
             }).catch(function(err) {
                 console.error('Erreur lors du chargement de l\'image DICOM:', err);
@@ -55,10 +75,76 @@
             // Créer un canvas pour les outils (important pour l'interaction)
             const canvas = element.querySelector('canvas');
             if (!canvas) {
+                console.log("Création du canvas...");
                 const newCanvas = document.createElement('canvas');
                 element.appendChild(newCanvas);
                 cornerstone.resize(element); // Redimensionner l'élément pour intégrer le canvas
             }
+
+            // Fonction pour activer un outil et mettre à jour l'apparence des boutons
+            function activateTool(tool) {
+                console.log("Activation de l'outil:", tool);
+
+                // Désactiver tous les autres outils
+                cornerstoneTools.setToolActive('Zoom', { mouseButtonMask: 1 });
+                cornerstoneTools.setToolActive('Pan', { mouseButtonMask: 2 });
+                cornerstoneTools.setToolActive('Wwwc', { mouseButtonMask: 3 });
+
+                // Désactiver visuellement tous les boutons
+                zoomButton.classList.add('inactive');
+                panButton.classList.add('inactive');
+                wwwcButton.classList.add('inactive');
+
+                // Activer le bon outil
+                if (tool === 'Zoom') {
+                    console.log("Activation de l'outil Zoom");
+                    cornerstoneTools.setToolActive('Zoom', { mouseButtonMask: 1 });
+                    zoomButton.classList.remove('inactive');
+                    zoomButton.classList.add('active');
+                } else if (tool === 'Pan') {
+                    console.log("Activation de l'outil Pan");
+                    cornerstoneTools.setToolActive('Pan', { mouseButtonMask: 2 });
+                    panButton.classList.remove('inactive');
+                    panButton.classList.add('active');
+                } else if (tool === 'Wwwc') {
+                    console.log("Activation de l'outil Windowing");
+                    cornerstoneTools.setToolActive('Wwwc', { mouseButtonMask: 3 });
+                    wwwcButton.classList.remove('inactive');
+                    wwwcButton.classList.add('active');
+                }
+            }
+
+            // Ajouter des événements aux boutons
+            zoomButton.addEventListener('click', function() {
+                activateTool('Zoom');
+            });
+
+            panButton.addEventListener('click', function() {
+                activateTool('Pan');
+            });
+
+            wwwcButton.addEventListener('click', function() {
+                activateTool('Wwwc');
+            });
+
+            // Initialiser l'outil Zoom par défaut
+            activateTool('Zoom');
+
+            // Gérer les événements de la souris avec les méthodes appropriées de Cornerstone
+            element.addEventListener('mousedown', function(event) {
+                console.log("mousedown triggered");
+                cornerstoneTools.mouseDown(event, element); // Utilisation correcte pour le contexte
+            });
+
+            element.addEventListener('mousemove', function(event) {
+                console.log("mousemove triggered");
+                cornerstoneTools.mouseMove(event, element); // Utilisation correcte pour le contexte
+            });
+
+            element.addEventListener('mouseup', function(event) {
+                console.log("mouseup triggered");
+                cornerstoneTools.mouseUp(event, element); // Utilisation correcte pour le contexte
+            });
         });
     </script>
 </body>
