@@ -13,11 +13,11 @@
     <script src="https://unpkg.com/cornerstone-tools@4.19.1/dist/cornerstoneTools.min.js"></script>
 
     <style>
-        /* Styles généraux */
         body {
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
+            justify-content: center;
             height: 100vh;
             background-color: #181818;
             margin: 0;
@@ -25,7 +25,6 @@
             font-family: Arial, sans-serif;
         }
 
-        /* Conteneur principal */
         .container {
             display: flex;
             flex-direction: column;
@@ -33,14 +32,12 @@
             text-align: center;
         }
 
-        /* Titre */
         h1 {
             font-size: 24px;
             margin-bottom: 10px;
             color: #00bcd4;
         }
 
-        /* Explication des fonctionnalités */
         .info-box {
             background: rgba(255, 255, 255, 0.1);
             padding: 15px;
@@ -49,7 +46,24 @@
             max-width: 500px;
         }
 
-        /* Conteneur de l'image DICOM */
+        .button-container {
+            margin-bottom: 20px;
+        }
+
+        button {
+            background-color: #00bcd4;
+            border: none;
+            color: white;
+            padding: 10px 15px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #008ba3;
+        }
+
         #dicom-container {
             width: 512px;
             height: 512px;
@@ -58,101 +72,74 @@
             background-color: black;
             position: relative;
             cursor: grab;
-            touch-action: none;
-        }
-
-        /* Pied de page */
-        .footer {
-            margin-top: 15px;
-            font-size: 14px;
-            opacity: 0.7;
+            overflow: hidden;
         }
     </style>
 </head>
 <body>
-
     <div class="container">
-        <!-- Titre -->
         <h1>Visualisation d'une image DICOM</h1>
-
-        <!-- Zone d'explication des fonctionnalités -->
         <div class="info-box">
             <p><strong>Fonctionnalités :</strong></p>
             <ul style="text-align: left;">
-                <li>🔍 <strong>Zoom :</strong> Utilisez la molette de la souris ou pincez sur le trackpad.</li>
-                <li>✋ <strong>Déplacement (Pan) :</strong> Cliquez et glissez pour déplacer l'image.</li>
+                <li>🔍 <strong>Zoom :</strong> Utilisez la molette de la souris.</li>
+                <li>✋ <strong>Déplacement :</strong> Cliquez et glissez pour déplacer l'image.</li>
             </ul>
         </div>
-
-        <!-- Conteneur de l'image DICOM -->
+        <div class="button-container" id="button-container"></div>
         <div id="dicom-container"></div>
-
-        <!-- Pied de page -->
-        <div class="footer">
-            ...
-        </div>
     </div>
 
     <script>
         document.addEventListener("DOMContentLoaded", async function () {
-            console.log("🚀 Initialisation de la visualisation DICOM...");
-
             const container = document.getElementById("dicom-container");
+            const buttonContainer = document.getElementById("button-container");
 
-            // Vérification de la présence des bibliothèques
-            if (!cornerstone || !cornerstoneTools) {
-                console.error("❌ Cornerstone ou Cornerstone Tools ne sont pas chargés !");
-                return;
-            }
-            console.log("✅ Cornerstone et Tools chargés avec succès !");
+            const imageList = [
+                "wadouri:http://localhost:3000/dicom/image-00000.dcm",
+                "wadouri:http://localhost:3000/dicom/image-00001.dcm",
+                "wadouri:http://localhost:3000/dicom/image-00002.dcm",
+                "wadouri:http://localhost:3000/dicom/image-00003.dcm",
+                "wadouri:http://localhost:3000/dicom/image-00004.dcm"
+            ];
 
-            // Activation de Cornerstone sur l'élément
             cornerstone.enable(container);
-
-            // Configuration du loader WADO pour charger une image DICOM
             cornerstoneWADOImageLoader.external.cornerstone = cornerstone;
-            cornerstoneWADOImageLoader.configure({
-                beforeSend: function (xhr) {
-                    xhr.setRequestHeader("Accept", "application/dicom");
-                },
+
+            async function loadDicomImage(imageId) {
+                try {
+                    const image = await cornerstone.loadImage(imageId);
+                    cornerstone.displayImage(container, image);
+                } catch (error) {
+                    console.error("❌ Erreur lors du chargement de l'image DICOM :", error);
+                }
+            }
+
+            imageList.forEach((image, index) => {
+                const button = document.createElement("button");
+                button.textContent = `Image ${index + 1}`;
+                button.addEventListener("click", () => loadDicomImage(image));
+                buttonContainer.appendChild(button);
             });
 
-            // Définir l'URL de l'image DICOM (Doit être accessible via un serveur)
-            const imageId = "wadouri:http://localhost:3000/dicom/image-00000.dcm";
+            loadDicomImage(imageList[0]); // Charger la première image par défaut
 
-            try {
-                console.log("🔄 Chargement de l'image DICOM...");
-                const image = await cornerstone.loadImage(imageId);
-                cornerstone.displayImage(container, image);
-                console.log("✅ Image DICOM chargée et affichée !");
-            } catch (error) {
-                console.error("❌ Erreur lors du chargement de l'image DICOM :", error);
-                return;
-            }
-
-            // 🎛️ Initialisation des outils Zoom & Pan
-            console.log("🎛️ Activation des outils Zoom et Pan...");
-
-            // 🔍 Zoom : Molette ou pinch sur le trackpad
             container.addEventListener("wheel", (event) => {
                 event.preventDefault();
                 const viewport = cornerstone.getViewport(container);
-                viewport.scale += event.deltaY * -0.002;
+                viewport.scale = Math.min(Math.max(viewport.scale + event.deltaY * -0.002, 0.5), 3);
                 cornerstone.setViewport(container, viewport);
-                console.log("🔍 Zoom appliqué : Scale =", viewport.scale);
             });
 
-            // ✋ Pan : Clic gauche + glisser
             let isPanning = false;
             let lastX = 0, lastY = 0;
 
             container.addEventListener("mousedown", (event) => {
-                if (event.button === 0) { // Clic gauche
+                if (event.button === 0) {
                     isPanning = true;
                     lastX = event.clientX;
                     lastY = event.clientY;
                     container.style.cursor = "grabbing";
-                    console.log("✋ Début du Pan : (", lastX, ",", lastY, ")");
                 }
             });
 
@@ -163,24 +150,18 @@
                     const deltaY = event.clientY - lastY;
                     lastX = event.clientX;
                     lastY = event.clientY;
-
                     const viewport = cornerstone.getViewport(container);
-                    viewport.translation.x += deltaX;
-                    viewport.translation.y += deltaY;
+                    viewport.translation.x = Math.min(Math.max(viewport.translation.x + deltaX, -256), 256);
+                    viewport.translation.y = Math.min(Math.max(viewport.translation.y + deltaY, -256), 256);
                     cornerstone.setViewport(container, viewport);
-                    console.log("✋ Pan en cours : Translation =", viewport.translation);
                 }
             });
 
             container.addEventListener("mouseup", () => {
                 isPanning = false;
                 container.style.cursor = "grab";
-                console.log("✅ Fin du Pan");
             });
-
-            console.log("✅ Outils prêts !");
         });
     </script>
-
 </body>
 </html>
