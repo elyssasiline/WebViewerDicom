@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Visualisation DICOM</title>
+    <link rel="stylesheet" href="css/styles.css">
 
     <!-- Charger les bibliothèques Cornerstone -->
     <script src="https://unpkg.com/cornerstone-core@latest/dist/cornerstone.min.js"></script>
@@ -11,148 +12,85 @@
     <script src="https://unpkg.com/cornerstone-wado-image-loader@latest/dist/cornerstoneWADOImageLoader.bundle.min.js"></script>
     <script src="https://unpkg.com/dicom-parser@latest/dist/dicomParser.min.js"></script>
     <script src="https://unpkg.com/cornerstone-tools@4.19.1/dist/cornerstoneTools.min.js"></script>
-
-    <style>
-        /* Styles généraux */
-        body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            background-color: #181818;
-            margin: 0;
-            color: white;
-            font-family: Arial, sans-serif;
-        }
-
-        /* Conteneur principal */
-        .container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-        }
-
-        /* Titre */
-        h1 {
-            font-size: 24px;
-            margin-bottom: 10px;
-            color: #00bcd4;
-        }
-
-        /* Explication des fonctionnalités */
-        .info-box {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            max-width: 500px;
-        }
-
-        /* Conteneur de l'image DICOM */
-        #dicom-container {
-            width: 512px;
-            height: 512px;
-            border: 2px solid #00bcd4;
-            border-radius: 8px;
-            background-color: black;
-            position: relative;
-            cursor: grab;
-            touch-action: none;
-        }
-
-        /* Pied de page */
-        .footer {
-            margin-top: 15px;
-            font-size: 14px;
-            opacity: 0.7;
-        }
-    </style>
 </head>
 <body>
+    <h1 style="color: cyan;">Visualisation d'une image DICOM</h1>
+    <div class="info-box" style="background: #333; padding: 10px; border-radius: 5px;">
+        <p><strong>Fonctionnalités :</strong></p>
+        <ul style="text-align: left; display: inline-block;">
+            <li>🔍 <strong>Zoom :</strong> Utilisez la molette de la souris.</li>
+            <li>✋ <strong>Déplacement :</strong> Cliquez et glissez pour déplacer l'image.</li>
+        </ul>
+    </div>
 
     <div class="container">
-        <!-- Titre -->
-        <h1>Visualisation d'une image DICOM</h1>
-
-        <!-- Zone d'explication des fonctionnalités -->
-        <div class="info-box">
-            <p><strong>Fonctionnalités :</strong></p>
-            <ul style="text-align: left;">
-                <li>🔍 <strong>Zoom :</strong> Utilisez la molette de la souris ou pincez sur le trackpad.</li>
-                <li>✋ <strong>Déplacement (Pan) :</strong> Cliquez et glissez pour déplacer l'image.</li>
-            </ul>
-        </div>
-
-        <!-- Conteneur de l'image DICOM -->
+        <button id="prev-button" class="nav-button">⬅️</button>
         <div id="dicom-container"></div>
-
-        <!-- Pied de page -->
-        <div class="footer">
-            ...
-        </div>
+        <button id="next-button" class="nav-button">➡️</button>
     </div>
 
     <script>
         document.addEventListener("DOMContentLoaded", async function () {
-            console.log("🚀 Initialisation de la visualisation DICOM...");
-
             const container = document.getElementById("dicom-container");
+            const prevButton = document.getElementById("prev-button");
+            const nextButton = document.getElementById("next-button");
 
-            // Vérification de la présence des bibliothèques
-            if (!cornerstone || !cornerstoneTools) {
-                console.error("❌ Cornerstone ou Cornerstone Tools ne sont pas chargés !");
-                return;
-            }
-            console.log("✅ Cornerstone et Tools chargés avec succès !");
+            let currentIndex = 0;
+            const totalImages = 5; // Nombre total d'images disponibles
 
-            // Activation de Cornerstone sur l'élément
             cornerstone.enable(container);
-
-            // Configuration du loader WADO pour charger une image DICOM
             cornerstoneWADOImageLoader.external.cornerstone = cornerstone;
-            cornerstoneWADOImageLoader.configure({
-                beforeSend: function (xhr) {
-                    xhr.setRequestHeader("Accept", "application/dicom");
-                },
+
+            function getDicomUrl(index) {
+                return `wadouri:http://localhost:3000/dicom-files/image-${String(index).padStart(5, '0')}.dcm`;
+            }
+
+            async function loadDicomImage(index) {
+                if (index < 0 || index >= totalImages) return; // Empêcher les dépassements
+                currentIndex = index;
+
+                try {
+                    const image = await cornerstone.loadImage(getDicomUrl(currentIndex));
+                    cornerstone.displayImage(container, image);
+                } catch (error) {
+                    console.error("❌ Erreur lors du chargement de l'image DICOM :", error);
+                }
+            }
+
+            // Charger la première image par défaut
+            loadDicomImage(currentIndex);
+
+            // Gestion des boutons de navigation
+            prevButton.addEventListener("click", () => {
+                if (currentIndex > 0) {
+                    loadDicomImage(currentIndex - 1);
+                }
             });
 
-            // Définir l'URL de l'image DICOM (Doit être accessible via un serveur)
-            const imageId = "wadouri:http://localhost:3000/dicom-files/image-00000.dcm";
+            nextButton.addEventListener("click", () => {
+                if (currentIndex < totalImages - 1) {
+                    loadDicomImage(currentIndex + 1);
+                }
+            });
 
-            try {
-                console.log("🔄 Chargement de l'image DICOM...");
-                const image = await cornerstone.loadImage(imageId);
-                cornerstone.displayImage(container, image);
-                console.log("✅ Image DICOM chargée et affichée !");
-            } catch (error) {
-                console.error("❌ Erreur lors du chargement de l'image DICOM :", error);
-                return;
-            }
-
-            // 🎛️ Initialisation des outils Zoom & Pan
-            console.log("🎛️ Activation des outils Zoom et Pan...");
-
-            // 🔍 Zoom : Molette ou pinch sur le trackpad
+            // Fonctionnalité de zoom avec la molette
             container.addEventListener("wheel", (event) => {
                 event.preventDefault();
                 const viewport = cornerstone.getViewport(container);
-                viewport.scale += event.deltaY * -0.002;
+                viewport.scale = Math.min(Math.max(viewport.scale + event.deltaY * -0.002, 0.5), 3);
                 cornerstone.setViewport(container, viewport);
-                console.log("🔍 Zoom appliqué : Scale =", viewport.scale);
             });
 
-            // ✋ Pan : Clic gauche + glisser
+            // Fonctionnalité de déplacement
             let isPanning = false;
             let lastX = 0, lastY = 0;
 
             container.addEventListener("mousedown", (event) => {
-                if (event.button === 0) { // Clic gauche
+                if (event.button === 0) {
                     isPanning = true;
                     lastX = event.clientX;
                     lastY = event.clientY;
                     container.style.cursor = "grabbing";
-                    console.log("✋ Début du Pan : (", lastX, ",", lastY, ")");
                 }
             });
 
@@ -163,22 +101,17 @@
                     const deltaY = event.clientY - lastY;
                     lastX = event.clientX;
                     lastY = event.clientY;
-
                     const viewport = cornerstone.getViewport(container);
-                    viewport.translation.x += deltaX;
-                    viewport.translation.y += deltaY;
+                    viewport.translation.x = Math.min(Math.max(viewport.translation.x + deltaX, -256), 256);
+                    viewport.translation.y = Math.min(Math.max(viewport.translation.y + deltaY, -256), 256);
                     cornerstone.setViewport(container, viewport);
-                    console.log("✋ Pan en cours : Translation =", viewport.translation);
                 }
             });
 
             container.addEventListener("mouseup", () => {
                 isPanning = false;
                 container.style.cursor = "grab";
-                console.log("✅ Fin du Pan");
             });
-
-            console.log("✅ Outils prêts !");
         });
     </script>
 </body>

@@ -1,14 +1,93 @@
 body {
-    font-family: Arial, sans-serif;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
     align-items: center;
+    justify-content: center;
     height: 100vh;
+    background-color: #181818;
     margin: 0;
-    background-color: #f4f4f4;
+    color: white;
+    font-family: Arial, sans-serif;
+}
+
+.container {
+    display: inline-block;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    position: relative;
+    margin-top: 20px;
+}
+
+h1 {
+    font-size: 24px;
+    margin-bottom: 10px;
+    color: #00bcd4;
+}
+
+.info-box {
+    text-align: center;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    max-width: 500px;
+}
+
+.button-container {
+    margin-bottom: 20px;
+}
+
+button {
+    background-color: #00bcd4;
+    border: none;
+    color: white;
+    padding: 10px 15px;
+    margin: 5px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #008ba3;
 }
 
 #dicom-container {
-    background-color: #fff;
-    border: 1px solid #ccc;
+    width: 512px;
+    height: 512px;
+    border: 2px solid #00bcd4;
+    border-radius: 8px;
+    background-color: black;
+    position: relative;
+    cursor: grab;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Boutons de navigation */
+.nav-button {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background-color: rgba(255, 255, 255, 0.2);
+    border: none;
+    padding: 15px;
+    font-size: 24px;
+    cursor: pointer;
+    transition: background 0.3s;
+    border-radius: 50%;
+}
+
+.nav-button:hover {
+    background-color: rgba(255, 255, 255, 0.5);
+}
+
+#prev-button {
+    left: -80px; /* Positionné hors du cadre */
+}
+
+#next-button {
+    right: -80px; /* Positionné hors du cadre */
 }
