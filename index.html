@@ -29,28 +29,30 @@
         <button id="next-button" class="nav-button">➡️</button>
     </div>
 
+    <button id="analyze-button">📊 Analyser avec IA</button>
+
     <script>
+        let currentIndex = 0; // ✅ Déclaration globale pour être accessible partout
+        const totalImages = 5; // Nombre total d'images disponibles
+
+        function getDicomUrl(index) {
+            return `http://localhost:3000/dicom-files/image-${String(index).padStart(5, '0')}.dcm`;
+        }
+
         document.addEventListener("DOMContentLoaded", async function () {
             const container = document.getElementById("dicom-container");
             const prevButton = document.getElementById("prev-button");
             const nextButton = document.getElementById("next-button");
 
-            let currentIndex = 0;
-            const totalImages = 5; // Nombre total d'images disponibles
-
             cornerstone.enable(container);
             cornerstoneWADOImageLoader.external.cornerstone = cornerstone;
 
-            function getDicomUrl(index) {
-                return `wadouri:http://localhost:3000/dicom-files/image-${String(index).padStart(5, '0')}.dcm`;
-            }
-
             async function loadDicomImage(index) {
-                if (index < 0 || index >= totalImages) return; // Empêcher les dépassements
-                currentIndex = index;
+                if (index < 0 || index >= totalImages) return; 
+                currentIndex = index; // ✅ Mise à jour correcte
 
                 try {
-                    const image = await cornerstone.loadImage(getDicomUrl(currentIndex));
+                    const image = await cornerstone.loadImage(`wadouri:${getDicomUrl(currentIndex)}`);
                     cornerstone.displayImage(container, image);
                 } catch (error) {
                     console.error("❌ Erreur lors du chargement de l'image DICOM :", error);
@@ -60,7 +62,7 @@
             // Charger la première image par défaut
             loadDicomImage(currentIndex);
 
-            // Gestion des boutons de navigation
+            // Navigation entre les images
             prevButton.addEventListener("click", () => {
                 if (currentIndex > 0) {
                     loadDicomImage(currentIndex - 1);
@@ -73,7 +75,7 @@
                 }
             });
 
-            // Fonctionnalité de zoom avec la molette
+            // Zoom avec la molette
             container.addEventListener("wheel", (event) => {
                 event.preventDefault();
                 const viewport = cornerstone.getViewport(container);
@@ -81,7 +83,7 @@
                 cornerstone.setViewport(container, viewport);
             });
 
-            // Fonctionnalité de déplacement
+            // Déplacement de l'image
             let isPanning = false;
             let lastX = 0, lastY = 0;
 
@@ -102,8 +104,8 @@
                     lastX = event.clientX;
                     lastY = event.clientY;
                     const viewport = cornerstone.getViewport(container);
-                    viewport.translation.x = Math.min(Math.max(viewport.translation.x + deltaX, -256), 256);
-                    viewport.translation.y = Math.min(Math.max(viewport.translation.y + deltaY, -256), 256);
+                    viewport.translation.x += deltaX;
+                    viewport.translation.y += deltaY;
                     cornerstone.setViewport(container, viewport);
                 }
             });
@@ -112,6 +114,34 @@
                 isPanning = false;
                 container.style.cursor = "grab";
             });
+        });
+
+        // Bouton d'analyse IA
+        document.getElementById("analyze-button").addEventListener("click", async function () {
+            const dicomUrl = getDicomUrl(currentIndex);
+
+            try {
+                // Télécharger l'image affichée
+                const response = await fetch(dicomUrl);
+                if (!response.ok) throw new Error("Impossible de récupérer le fichier DICOM.");
+
+                const blob = await response.blob();
+                const formData = new FormData();
+                formData.append("file", blob, `image-${currentIndex}.dcm`);
+
+                // Envoyer l'image au serveur FastAPI
+                const analyzeResponse = await fetch("http://localhost:8000/analyze-dicom/", {
+                    method: "POST",
+                    body: formData,
+                });
+
+                const result = await analyzeResponse.json();
+                console.log("📊 Résultat de l'analyse :", result);
+                alert(`Analyse IA réussie !\nPatient : ${result.patient_name}\nModality : ${result.modality}\nIntensité Moyenne : ${result.mean_intensity}`);
+            } catch (error) {
+                console.error("❌ Erreur d'analyse :", error);
+                alert("Erreur lors de l'analyse de l'image DICOM.");
+            }
         });
     </script>
 </body>
