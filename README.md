@@ -1,5 +1,7 @@
 # Tasks React
 
+Lien de l'application : https://hachimibouizegarene.github.io/tasks-react/
+
 ## Getting Started
 
 This project uses [Vite](https://vitejs.dev/) for fast development and build.
