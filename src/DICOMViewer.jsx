@@ -4,51 +4,45 @@ import cornerstoneTools from "cornerstone-tools";
 import dicomParser from "dicom-parser";
 import cornerstoneWADOImageLoader from "cornerstone-wado-image-loader";
 
-// 📌 Configuration de Cornerstone v4 et du WADO Image Loader
+// 📌 Configuration de Cornerstone
 cornerstoneWADOImageLoader.external.cornerstone = cornerstone;
 cornerstoneWADOImageLoader.external.dicomParser = dicomParser;
-cornerstoneWADOImageLoader.configure({
-    beforeSend: (xhr) => {
-        xhr.setRequestHeader("Accept", "application/dicom");
-    },
-});
 
-const DICOMViewer = () => {
+const DICOMViewer = ({ dicomFiles = [] }) => {
     const viewerRef = useRef(null);
     const [currentIndex, setCurrentIndex] = useState(0);
 
     useEffect(() => {
-        if (!viewerRef.current) return;
+        if (!viewerRef.current || dicomFiles.length === 0) return;
 
-        cornerstone.enable(viewerRef.current); // Active le rendering
+        cornerstone.enable(viewerRef.current);
         loadDicomImage(currentIndex);
-    }, [currentIndex]);
-
-    const getDicomUrl = (index) => {
-        return `wadouri:dicom-files/image-${String(index).padStart(5, "0")}.dcm`;
-    };    
+    }, [currentIndex, dicomFiles]);
 
     const loadDicomImage = async (index) => {
+        if (!viewerRef.current || dicomFiles.length === 0) return;
         try {
-            const imageId = getDicomUrl(index);
+            const imageId = `wadouri:${dicomFiles[index]}`;
             console.log("Chargement de l'image DICOM :", imageId);
 
             const image = await cornerstone.loadImage(imageId);
             const viewportElement = viewerRef.current;
-            
-            cornerstone.displayImage(viewportElement, image); // Affiche l'image
 
-            // 📌 Activation des outils (Zoom, Pan)
-            const stackToolState = cornerstoneTools.getToolState(viewportElement, "stack");
-            if (!stackToolState) {
-                cornerstoneTools.addStackStateManager(viewportElement, ["stack"]);
-                cornerstoneTools.addToolState(viewportElement, "stack", {
-                    imageIds: [imageId],
-                    currentImageIdIndex: 0,
-                });
+            // ✅ Vérifier que viewerRef est bien activé avant d'afficher
+            if (!cornerstone.getEnabledElement(viewportElement)) {
+                console.warn("❌ Cornerstone non activé, tentative d'activation.");
+                cornerstone.enable(viewportElement);
             }
 
-            // 📌 Active les interactions utilisateur
+            cornerstone.displayImage(viewportElement, image);
+
+            // 📌 Activation des outils (Zoom, Pan)
+            cornerstoneTools.addStackStateManager(viewportElement, ["stack"]);
+            cornerstoneTools.addToolState(viewportElement, "stack", {
+                imageIds: dicomFiles.map((url) => `wadouri:${url}`),
+                currentImageIdIndex: index,
+            });
+
             cornerstoneTools.setToolActive("Pan", { mouseButtonMask: 2 });
             cornerstoneTools.setToolActive("Zoom", { mouseButtonMask: 4 });
         } catch (error) {
@@ -62,7 +56,7 @@ const DICOMViewer = () => {
 
     return (
         <div className="flex flex-col items-center gap-2">
-            {/* 📌 Viewer DICOM (Sans titre ni description) */}
+            {/* 📌 Viewer DICOM */}
             <div className="w-96 h-96 border border-gray-400" ref={viewerRef}></div>
 
             {/* 📌 Boutons pour activer Zoom et Pan */}
@@ -78,14 +72,16 @@ const DICOMViewer = () => {
             {/* 📌 Navigation entre les images */}
             <div className="flex gap-4 mt-2">
                 <button
-                    onClick={() => setCurrentIndex(Math.max(currentIndex - 1, 0))}
+                    onClick={() => setCurrentIndex((prev) => Math.max(prev - 1, 0))}
                     className="px-3 py-1 bg-blue-500 text-white rounded-md"
+                    disabled={currentIndex === 0}
                 >
                     ⬅️
                 </button>
                 <button
-                    onClick={() => setCurrentIndex(Math.min(currentIndex + 1, 29))}
+                    onClick={() => setCurrentIndex((prev) => Math.min(prev + 1, dicomFiles.length - 1))}
                     className="px-3 py-1 bg-blue-500 text-white rounded-md"
+                    disabled={currentIndex === dicomFiles.length - 1}
                 >
                     ➡️
                 </button>
