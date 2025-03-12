@@ -5,8 +5,19 @@ import { GetDateTimestamp, customParseDate } from "./services/timeFunctions";
 import { fromDate } from '@internationalized/date';
 import { Accordion, AccordionItem } from "@heroui/react";
 import { RiEdit2Fill } from "react-icons/ri";
+import DICOMViewer from "./DICOMViewer";
 
-const interpretElement = ({ element, data, index }) => {
+const interpretElement = ({ element, data, index, dicomUrl }) => {
+   
+    if (element.field_type == "dicom_viewer") {
+        if (!dicomUrl) return null;
+        return (
+            <div key={index} className="flex flex-col items-center">
+                <DICOMViewer dicomUrl={dicomUrl} />
+            </div>
+        );
+    }
+
     if (element.field_type == "input") {
         if (element.input_type == "text") {
             return <Input key={index} isClearable className="dark:text-zinc-200" value={data}
@@ -49,27 +60,39 @@ const interpretElement = ({ element, data, index }) => {
     }
 
     else if (element.field_type == "sections") {
-        return <div className="flex flex-col" key={index}>
-            <p className="text-xs mb-1  text-zinc-400 p-0">{element.field_label || element.field_key} :</p>
-            <Accordion className="!px-0" isCompact>
-                {
-                    data.map((section, i) => {
-                        const sectionForm = element.field_children.find(e => e.field_label == data[i].$label)
-                        return <AccordionItem title={data[i].$label}>
-                            <div className="flex gap-2 flex-col">
-                            {sectionForm.field_children.map(sectionElement => interpretElement({ element: sectionElement, data: data[i][sectionElement.field_key], index: i }))}
-                            </div>
-                           
-                        </AccordionItem>
-                    })
-                }
-            </Accordion>
-        </div>
+        return (
+            <div className="flex flex-col" key={index}>
+                <p className="text-xs mb-1 text-zinc-400 p-0">{element.field_label || element.field_key} :</p>
+                <Accordion className="!px-0" isCompact>
+                    {data.map((section, i) => {
+                        const sectionForm = element.field_children.find(e => e.field_label == data[i].$label);
+                        return (
+                            <AccordionItem key={i} title={data[i].$label}>
+                                <div className="flex gap-2 flex-col">
+                                    {sectionForm.field_children.map(sectionElement =>
+                                        interpretElement({
+                                            element: sectionElement,
+                                            data: data[i][sectionElement.field_key],
+                                            index: i,
+                                            dicomUrl,
+                                        })
+                                    )}
+                                </div>
+                            </AccordionItem>
+                        );
+                    })}
+                </Accordion>
+            </div>
+        );
     }
 }
 
-export const FormInterpreter = ({ form, data }) => {
-    return <div className="flex h-full gap-2  flex-col">
-        {form.form.map((element, index) => interpretElement({ element, data: data[element.field_key], index }))}
-    </div>
-}
+export const FormInterpreter = ({ form, data, dicomUrl = "wadouri:http://localhost:5173/dicom-files/image-00000.dcm" }) => {
+    return (
+        <div className="flex h-full gap-2 flex-col">
+            {form?.form.map((element, index) =>
+                interpretElement({ element, data: data[element.field_key], index, dicomUrl }) // ✅ dicomUrl est bien transmis !
+            )}
+        </div>
+    );
+};
