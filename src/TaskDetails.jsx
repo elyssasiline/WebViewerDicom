@@ -21,12 +21,13 @@ export const TaskDetails = ({ isOpen, onClose, taskData: data }) => {
 
     const totalPages = formsInRow.length + 1;
     
-        const handleFileUpload = (event) => {
-            const files = Array.from(event.target.files);
-            const urls = files.map((file) => URL.createObjectURL(file));
-            
-            setUploadedFiles(prevFiles => [...prevFiles, ...urls]);
-        };
+    const handleFileUpload = (event) => {
+        const files = Array.from(event.target.files);
+        const urls = files.map((file) => URL.createObjectURL(file));
+    
+        setUploadedFiles(prevFiles => [...prevFiles, ...urls]);
+    };
+    
 
     return (
         <Modal scrollBehavior="inside" shouldBlockScroll size="2xl" onClose={onClose} backdrop="blur" isOpen={isOpen}>
@@ -45,28 +46,28 @@ export const TaskDetails = ({ isOpen, onClose, taskData: data }) => {
                                     <>
                                         <FormInterpreter data={data} form={formsInRow[selectedForm]} />
                                         
-                                        {/* 📌 Zone d'upload des fichiers DICOM */}
-                                        <div className="mt-4">
-                                            <label className="text-sm text-gray-700">Upload DICOM files:</label>
-                                            <input
-                                                type="file"
-                                                accept=".dcm"
-                                                multiple
-                                                onChange={handleFileUpload}
-                                                className="block w-full border border-gray-300 rounded-md p-2 mt-2"
-                                            />
-                                        </div>
+                                        {selectedForm === 1 && (
+                                            <div className="mt-4">
+                                                <label className="text-sm text-gray-700">Upload DICOM files:</label>
+                                                <input
+                                                    type="file"
+                                                    accept=".dcm"
+                                                    multiple
+                                                    onChange={handleFileUpload}
+                                                    className="block w-full border border-gray-300 rounded-md p-2 mt-2"
+                                                />
+                                            </div>
+                                        )}
 
-                                        {/* 📌 Affichage des fichiers sélectionnés */}
                                         {uploadedFiles.length > 0 && (
                                             <div className="mt-4">
                                                 <p className="text-sm text-gray-700">Selected DICOM Files:</p>
                                                 <ul className="list-disc pl-5">
-                                                {uploadedFiles.map((file, index) => (
-                                                    <li key={index} className="text-sm text-gray-600">
-                                                        Image {index + 1}
-                                                    </li>
-                                                ))}
+                                                    {uploadedFiles.map((file, index) => (
+                                                        <li key={index} className="text-sm text-gray-600">
+                                                            {file.name || `File ${index + 1}`}
+                                                        </li>
+                                                    ))}
                                                 </ul>
                                             </div>
                                         )}
