@@ -1,68 +1,75 @@
-# 🟢 Explication du Projet de Visualisation DICOM
+# Viewerdicom
 
-## 📝 **Présentation du Projet**
-Ce projet consiste à créer une **application web** permettant de **visualiser des images médicales DICOM**. Il utilise la bibliothèque **Cornerstone.js**, spécialisée dans l'affichage d'images médicales dans le navigateur.
+Viewerdicom est une application web conçue pour afficher des images DICOM avec des fonctionnalités interactives telles que le pan, le zoom, et l'ajout d'annotations (texte et lignes de mesure). L'application permet également de fusionner l'image DICOM avec les annotations pour télécharger un rendu final.
 
-## 📌 **Objectifs du Projet**
-- ✅ **Charger** et **afficher** des images DICOM.
-- ✅ **Interagir** avec les images (Zoom et Pan).
-- ✅ **Afficher les logs** dans la console pour suivre les actions.
+## Fonctionnement du Code
 
----
+### 1. Initialisation et Affichage de l'Image
 
-## 📚 **Outils et Bibliothèques Utilisés**
-### 1️⃣ `cornerstone-core` *(Cœur de l'affichage)*
-- **Affiche l'image** dans le conteneur HTML.
-- Fournit les outils principaux : **Zoom, Pan**.
-- **Pourquoi ?** : Indispensable pour afficher les images DICOM.
+- **Cornerstone**  
+  Le projet utilise [Cornerstone](https://github.com/cornerstonejs/cornerstone) pour charger et afficher l'image DICOM.  
+  - **Chargement de l'image** : La fonction `cornerstone.loadImage` est utilisée pour charger l'image à partir d'une URL.  
+  - **Affichage** : `cornerstone.displayImage` affiche l'image dans un conteneur HTML.
+- **PixelSpacing**  
+  Lors du chargement, le code vérifie si le DICOM contient le tag `PixelSpacing` (0028,0030). Ce tag donne la dimension physique d'un pixel (en millimètres).  
+  - Cette information est utilisée pour convertir les distances mesurées en pixels en centimètres (en divisant par 10 après conversion en mm).
 
-### 2️⃣ `cornerstone-wado-image-loader` *(Chargement des images DICOM)*
-- **Charge** les images DICOM depuis un **serveur via WADO**.
-- Compatible avec les serveurs **PACS** (utilisés dans les hôpitaux).
-- **Pourquoi ?** : Facilite l'accès aux images DICOM en réseau.
+### 2. Gestion des Modes d'Interaction
 
-### 3️⃣ `cornerstone-math` *(Mathématiques pour l'image)*
-- Fournit des **outils mathématiques** (coordonnées, zoom, déplacements).
-- Utile pour **calculer les mouvements (Pan) et le zoom**.
-- **Pourquoi ?** : Essentiel pour gérer les interactions utilisateur.
+Pour éviter les conflits entre les différentes actions, l'application utilise des boutons pour activer des modes exclusifs :
 
-### 4️⃣ `dicom-parser` *(Lecture des métadonnées)*
-- **Lit les fichiers DICOM** (nom du patient, type de scan, etc.).
-- Analyse les **en-têtes DICOM**.
-- **Pourquoi ?** : Utile pour l'affichage des informations médicales.
+- **Pan**  
+  En mode **Pan**, l'utilisateur peut déplacer l'image en modifiant le viewport de Cornerstone (c'est-à-dire les valeurs de `translation.x` et `translation.y`).  
+- **Zoom**  
+  Le mode **Zoom** permet d'utiliser la molette de la souris pour agrandir ou réduire l'image.  
+- **Annotation Texte**  
+  En mode **Annotation Texte**, un clic sur l'image affiche une invite pour saisir du texte. La position du clic est convertie en coordonnées image grâce à `cornerstone.pageToPixel`.  
+- **Annotation Ligne**  
+  Ce mode permet de tracer une ligne de mesure. La ligne est dessinée en direct (live) pendant que l'utilisateur déplace la souris, et est finalisée lors du relâchement du clic.  
+  - La distance est calculée en pixels, convertie en millimètres (en tenant compte du `PixelSpacing`), puis en centimètres.
 
-### 5️⃣ `cornerstone-tools` *(Outils interactifs)*
-- Ajoute des **interactions avancées** : **Zoom, Pan, Mesures, Annotations**.
-- Permet d’**écouter les événements** de la souris (molette, clic, glisser).
-- **Pourquoi ?** : Gère toute l’interactivité sur l’image.
+### 3. Conversion des Coordonnées
 
+L'une des clés du projet est la conversion des coordonnées afin que les annotations suivent parfaitement l'image lors des transformations (pan, zoom) :
 
-## 🟢 **Structure du Script**
-### 1️⃣ **Chargement du Script (`DOMContentLoaded`)**
-- Écoute l'événement `DOMContentLoaded` et **exécute le script une fois la page chargée**.
-- Permet de **garantir que le DOM est prêt** avant d'utiliser `#dicom-container`.
+- **`cornerstone.pageToPixel(container, pageX, pageY)`**  
+  Convertit les coordonnées de la page (issue d'un événement de souris) en coordonnées image. Ces coordonnées sont stockées dans les annotations.
+- **`cornerstone.pixelToCanvas(container, { x, y })`**  
+  Convertit les coordonnées image en coordonnées canvas lors du rendu, garantissant ainsi que les annotations soient correctement positionnées sur l'écran, même après transformation.
 
-### 2️⃣ **Vérification des Bibliothèques (`cornerstone`, `cornerstoneTools`)**
-- Vérifie que `cornerstone` et `cornerstoneTools` sont chargés.
-- Affiche une **erreur** (`console.error()`) si elles sont absentes.
+### 4. Fusion et Téléchargement de l'Image Annotée
 
-### 3️⃣ **Initialisation de Cornerstone (`cornerstone.enable()`)**
-- **Active** le moteur de rendu **sur l’élément HTML** `#dicom-container`.
-- Prépare l’élément pour **afficher une image DICOM**.
+Pour permettre à l'utilisateur de sauvegarder le résultat, le code fusionne :
 
-### 4️⃣ **Chargement de l'Image DICOM (`cornerstone.loadImage()`)**
-- **Configure** le `WADO` loader (`cornerstoneWADOImageLoader`).
-- **Charge** l’image via l’URL avec `wadouri:`.
-- **Affiche** l’image avec `cornerstone.displayImage()`.
-- **Gère les erreurs** (`try...catch`).
+- Le canvas de l'image (géré par Cornerstone)  
+- Le canvas des annotations  
+  
+La fusion est effectuée sur un canvas temporaire, qui est ensuite converti en image PNG via `toDataURL` et proposé en téléchargement.
 
-### 5️⃣ **Gestion du Zoom (`wheel` event)**
-- Écoute **l’événement `wheel`** (molette ou pinch).
-- **Empêche le défilement** de la page (`event.preventDefault()`).
-- **Modifie** l’échelle (`viewport.scale`).
-- **Applique** le zoom (`cornerstone.setViewport()`).
+## Pourquoi ces Choix ?
 
-### 6️⃣ **Gestion du Déplacement (Pan) (`mousedown`, `mousemove`, `mouseup`)**
-- **Début (`mousedown`)** : Active le mode `Pan` et enregistre la position initiale.
-- **Déplacement (`mousemove`)** : Calcule les mouvements (`deltaX`, `deltaY`) et déplace l’image.
-- **Fin (`mouseup`)** : Désactive le mode `Pan`.
+### Utilisation de Cornerstone et des Conversions de Coordonnées
+
+- **Précision** : Cornerstone gère nativement les transformations (zoom, pan, rotation) et permet d'utiliser des fonctions de conversion (`pageToPixel` et `pixelToCanvas`) garantissant une correspondance exacte entre l'image et les annotations.
+- **Simplicité** : En se reposant sur l'API de Cornerstone, on évite de recalculer manuellement les transformations, ce qui réduit les erreurs et simplifie le code.
+
+### Modes Exclusifs via Boutons
+
+- **Clarté et Contrôle** : En activant un mode à la fois (pan, zoom, annotation texte, annotation ligne), l'application évite les conflits d'interaction. Cela rend l'expérience utilisateur plus intuitive, car l'action désirée est isolée.
+- **Flexibilité** : L'utilisateur peut facilement basculer entre les différentes fonctionnalités en utilisant des boutons dédiés.
+
+### Mesure Physique en Centimètres
+
+- **Utilité Clinique** : La conversion de la distance mesurée en centimètres (en se basant sur le tag `PixelSpacing`) permet d'obtenir des mesures réalistes, essentielles en contexte médical.
+- **Précision** : En utilisant les valeurs réelles de l'espacement des pixels, la mesure correspond exactement aux dimensions physiques de l'image.
+
+### Rendu en Direct et Téléchargement
+
+- **Feedback Immédiat** : Le rendu en direct des lignes lors du tracé permet à l'utilisateur de visualiser instantanément la distance mesurée, améliorant ainsi l'interaction.
+- **Fusion des Canvases** : La méthode de fusion garantit que le téléchargement inclut à la fois l'image DICOM et toutes les annotations, pour un rendu final complet.
+
+## Conclusion
+
+Le projet **Viewerdicom** combine les puissantes fonctionnalités de Cornerstone avec une interface utilisateur claire et moderne. Grâce à l'utilisation de modes exclusifs et de conversions précises des coordonnées, l'application garantit que les annotations restent parfaitement synchronisées avec l'image DICOM, même lors des opérations de pan et de zoom. La conversion des mesures en centimètres offre par ailleurs des résultats réalistes et utiles en contexte médical.
+
+N'hésitez pas à adapter ce code et à ajouter d'autres fonctionnalités selon vos besoins.
