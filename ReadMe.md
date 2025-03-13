@@ -72,4 +72,3 @@ La fusion est effectuée sur un canvas temporaire, qui est ensuite converti en i
 
 Le projet **Viewerdicom** combine les puissantes fonctionnalités de Cornerstone avec une interface utilisateur claire et moderne. Grâce à l'utilisation de modes exclusifs et de conversions précises des coordonnées, l'application garantit que les annotations restent parfaitement synchronisées avec l'image DICOM, même lors des opérations de pan et de zoom. La conversion des mesures en centimètres offre par ailleurs des résultats réalistes et utiles en contexte médical.
 
-N'hésitez pas à adapter ce code et à ajouter d'autres fonctionnalités selon vos besoins.
