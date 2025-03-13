@@ -1,167 +1,610 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Visualisation DICOM</title>
-
-    <!-- Charger les bibliothèques Cornerstone -->
-    <script src="https://unpkg.com/cornerstone-core@latest/dist/cornerstone.min.js"></script>
-    <script src="https://unpkg.com/cornerstone-math@latest/dist/cornerstoneMath.min.js"></script>
-    <script src="https://unpkg.com/cornerstone-wado-image-loader@latest/dist/cornerstoneWADOImageLoader.bundle.min.js"></script>
-    <script src="https://unpkg.com/dicom-parser@latest/dist/dicomParser.min.js"></script>
-    <script src="https://unpkg.com/cornerstone-tools@4.19.1/dist/cornerstoneTools.min.js"></script>
-
-    <style>
-        body {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            background-color: #181818;
-            margin: 0;
-            color: white;
-            font-family: Arial, sans-serif;
-        }
-
-        .container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-        }
-
-        h1 {
-            font-size: 24px;
-            margin-bottom: 10px;
-            color: #00bcd4;
-        }
-
-        .info-box {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            max-width: 500px;
-        }
-
-        .button-container {
-            margin-bottom: 20px;
-        }
-
-        button {
-            background-color: #00bcd4;
-            border: none;
-            color: white;
-            padding: 10px 15px;
-            margin: 5px;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-
-        button:hover {
-            background-color: #008ba3;
-        }
-
-        #dicom-container {
-            width: 512px;
-            height: 512px;
-            border: 2px solid #00bcd4;
-            border-radius: 8px;
-            background-color: black;
-            position: relative;
-            cursor: grab;
-            overflow: hidden;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Visualisation DICOM – Application Attractive</title>
+  
+  <!-- Chargement de Cornerstone et du loader DICOM -->
+  <script src="https://unpkg.com/cornerstone-core@latest/dist/cornerstone.min.js"></script>
+  <script src="https://unpkg.com/cornerstone-wado-image-loader@latest/dist/cornerstoneWADOImageLoader.bundle.min.js"></script>
+  <script src="https://unpkg.com/dicom-parser@latest/dist/dicomParser.min.js"></script>
+  
+  <!-- Import d'une police moderne -->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+  
+  <style>
+    /* Style global */
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: 'Roboto', sans-serif;
+      background: linear-gradient(135deg, #181818, #333);
+      color: #f0f0f0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h1 {
+      margin-bottom: 15px;
+      color: #00bcd4;
+      text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.6);
+    }
+    /* Wrapper pour l'image et les réglages d'image */
+    .dicom-wrapper {
+      position: relative;
+      display: inline-block;
+    }
+    /* Conteneur DICOM */
+    #dicom-container {
+      width: 512px;
+      height: 512px;
+      background-color: #000;
+      border: 3px solid #00bcd4;
+      border-radius: 8px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+    }
+    /* Canvas pour les annotations */
+    #drawing-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 10;
+    }
+    /* Panneau de réglages d'image placé à droite */
+    #image-adjustments {
+      position: absolute;
+      top: 10px;
+      right: -160px;
+      width: 140px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 10px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    }
+    #image-adjustments label {
+      font-size: 14px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    input[type="range"] {
+      width: 100%;
+      cursor: pointer;
+      border-radius: 5px;
+      border: none;
+      padding: 3px;
+    }
+    /* Barre d'outils */
+    .button-container {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin: 15px 0 10px;
+    }
+    .button-container button {
+      background-color: #00bcd4;
+      border: none;
+      border-radius: 50%;
+      padding: 12px;
+      cursor: pointer;
+      font-size: 20px;
+      color: #fff;
+      transition: background-color 0.2s, transform 0.1s;
+    }
+    .button-container button:hover {
+      background-color: #008ba3;
+      transform: scale(1.1);
+    }
+    /* Options pour outils (affichées dynamiquement) */
+    .option-container {
+      display: none;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 15px;
+      margin-bottom: 20px;
+      padding: 10px;
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    }
+    .option-container label {
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    input[type="color"],
+    select {
+      cursor: pointer;
+      border-radius: 5px;
+      border: none;
+      padding: 3px 5px;
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Visualisation d'une image DICOM</h1>
-        <div class="info-box">
-            <p><strong>Fonctionnalités :</strong></p>
-            <ul style="text-align: left;">
-                <li>🔍 <strong>Zoom :</strong> Utilisez la molette de la souris.</li>
-                <li>✋ <strong>Déplacement :</strong> Cliquez et glissez pour déplacer l'image.</li>
-            </ul>
-        </div>
-        <div class="button-container" id="button-container"></div>
-        <div id="dicom-container"></div>
+  <h1>Visualisation DICOM – Application Attractive</h1>
+  
+  <!-- Wrapper pour l'image et les réglages -->
+  <div class="dicom-wrapper">
+    <div id="dicom-container">
+      <canvas id="drawing-canvas"></canvas>
     </div>
-
-    <script>
-        document.addEventListener("DOMContentLoaded", async function () {
-            const container = document.getElementById("dicom-container");
-            const buttonContainer = document.getElementById("button-container");
-
-            const imageList = [
-                "wadouri:http://localhost:3000/dicom/image-00000.dcm",
-                "wadouri:http://localhost:3000/dicom/image-00001.dcm",
-                "wadouri:http://localhost:3000/dicom/image-00002.dcm",
-                "wadouri:http://localhost:3000/dicom/image-00003.dcm",
-                "wadouri:http://localhost:3000/dicom/image-00004.dcm"
-            ];
-
-            cornerstone.enable(container);
-            cornerstoneWADOImageLoader.external.cornerstone = cornerstone;
-
-            async function loadDicomImage(imageId) {
-                try {
-                    const image = await cornerstone.loadImage(imageId);
-                    cornerstone.displayImage(container, image);
-                } catch (error) {
-                    console.error("❌ Erreur lors du chargement de l'image DICOM :", error);
-                }
-            }
-
-            imageList.forEach((image, index) => {
-                const button = document.createElement("button");
-                button.textContent = `Image ${index + 1}`;
-                button.addEventListener("click", () => loadDicomImage(image));
-                buttonContainer.appendChild(button);
+    <!-- Réglages de l'image, placés verticalement à droite -->
+    <div id="image-adjustments">
+      <label>
+        Window Center<br>(Lumière)
+        <input type="range" id="brightness-control" min="0" max="2000" value="1024">
+      </label>
+      <label>
+        Window Width<br>(Contraste)
+        <input type="range" id="contrast-control" min="0" max="2000" value="1024">
+      </label>
+    </div>
+  </div>
+  
+  <!-- Barre d'outils avec emojis -->
+  <div class="button-container">
+    <button id="pencil-button" title="Stylo">🖊️</button>
+    <button id="shapes-button" title="Formes">🔷</button>
+    <button id="undo-button" title="Annuler">↩️</button>
+    <button id="redo-button" title="Rétablir">↪️</button>
+    <button id="clear-button" title="Effacer tout">🗑️</button>
+    <button id="eraser-button" title="Gomme">🧽</button>
+  </div>
+  
+  <!-- Options pour le stylo -->
+  <div id="pencil-options" class="option-container">
+    <label>Taille:
+      <input type="range" id="pencil-size" min="1" max="20" value="2">
+    </label>
+    <label>Couleur:
+      <input type="color" id="pencil-color" value="#000000">
+    </label>
+    <label>Opacité:
+      <input type="range" id="pencil-opacity" min="0" max="1" step="0.05" value="1">
+    </label>
+  </div>
+  
+  <!-- Options pour les formes -->
+  <div id="shape-options" class="option-container">
+    <label>Forme :
+      <select id="shape-select">
+        <option value="rectangle">Rectangle</option>
+        <option value="circle">Cercle</option>
+        <option value="polygon">Polygone (5 côtés)</option>
+        <option value="hexagon">Hexagone</option>
+        <option value="arrow">Flèche</option>
+        <option value="doubleArrow">Double Flèche</option>
+      </select>
+    </label>
+    <label>Épaisseur:
+      <input type="range" id="shape-size" min="1" max="20" value="2">
+    </label>
+    <label>Couleur:
+      <input type="color" id="shape-color" value="#000000">
+    </label>
+    <label>Opacité:
+      <input type="range" id="shape-opacity" min="0" max="1" step="0.05" value="1">
+    </label>
+  </div>
+  
+  <script>
+    document.addEventListener("DOMContentLoaded", async function () {
+      // Variable pour stocker l'image chargée
+      let loadedImage = null;
+      
+      // Historique Undo/Redo
+      let history = [];
+      let historyIndex = -1;
+      function saveHistory() {
+        history = history.slice(0, historyIndex + 1);
+        history.push(JSON.parse(JSON.stringify(shapes)));
+        historyIndex = history.length - 1;
+      }
+      function undo() {
+        if (historyIndex > 0) {
+          historyIndex--;
+          shapes = JSON.parse(JSON.stringify(history[historyIndex]));
+          redrawOverlay();
+        }
+      }
+      function redo() {
+        if (historyIndex < history.length - 1) {
+          historyIndex++;
+          shapes = JSON.parse(JSON.stringify(history[historyIndex]));
+          redrawOverlay();
+        }
+      }
+      
+      // Variables globales pour outils de dessin
+      let shapes = [];
+      let currentShape = null;
+      let isDrawing = false;
+      let currentTool = "pencil"; // "pencil", formes ou "eraser"
+      
+      // Paramètres par défaut pour stylo et formes
+      let pencilSize = parseInt(document.getElementById("pencil-size").value);
+      let pencilColor = document.getElementById("pencil-color").value;
+      let pencilOpacity = parseFloat(document.getElementById("pencil-opacity").value);
+      
+      let shapeSize = parseInt(document.getElementById("shape-size").value);
+      let shapeColor = document.getElementById("shape-color").value;
+      let shapeOpacity = parseFloat(document.getElementById("shape-opacity").value);
+      
+      const container = document.getElementById("dicom-container");
+      const drawingCanvas = document.getElementById("drawing-canvas");
+      drawingCanvas.width = container.clientWidth;
+      drawingCanvas.height = container.clientHeight;
+      const drawingCtx = drawingCanvas.getContext("2d");
+      
+      // Activation de Cornerstone et chargement de l'image DICOM
+      cornerstone.enable(container);
+      cornerstoneWADOImageLoader.external.cornerstone = cornerstone;
+      const imageId = "wadouri:http://localhost:3000/dicom/image-00000.dcm";
+      try {
+        loadedImage = await cornerstone.loadImage(imageId);
+        cornerstone.displayImage(container, loadedImage);
+      } catch (error) {
+        console.error("Erreur lors du chargement de l'image DICOM :", error);
+      }
+      
+      // Conversion entre coordonnées canvas et image
+      function canvasToImage(pos) {
+        return cornerstone.canvasToPixel(container, pos);
+      }
+      function imageToCanvas(pos) {
+        return cornerstone.pixelToCanvas(container, pos);
+      }
+      
+      // Fonctions d'aide pour dessiner des formes étendues
+      function drawRegularPolygon(ctx, center, radius, sides) {
+        ctx.beginPath();
+        for (let i = 0; i < sides; i++) {
+          const angle = (2 * Math.PI * i) / sides - Math.PI / 2;
+          const x = center.x + radius * Math.cos(angle);
+          const y = center.y + radius * Math.sin(angle);
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.stroke();
+      }
+      function drawArrow(ctx, start, end) {
+        ctx.beginPath();
+        ctx.moveTo(start.x, start.y);
+        ctx.lineTo(end.x, end.y);
+        ctx.stroke();
+        const angle = Math.atan2(end.y - start.y, end.x - start.x);
+        const headLength = 10;
+        ctx.beginPath();
+        ctx.moveTo(end.x, end.y);
+        ctx.lineTo(end.x - headLength * Math.cos(angle - Math.PI / 6), end.y - headLength * Math.sin(angle - Math.PI / 6));
+        ctx.lineTo(end.x - headLength * Math.cos(angle + Math.PI / 6), end.y - headLength * Math.sin(angle + Math.PI / 6));
+        ctx.lineTo(end.x, end.y);
+        ctx.closePath();
+        ctx.fill();
+      }
+      function drawDoubleArrow(ctx, start, end) {
+        drawArrow(ctx, start, end);
+        drawArrow(ctx, end, start);
+      }
+      
+      // Redessiner les annotations (overlay)
+      function redrawOverlay() {
+        drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+        shapes.forEach(shape => {
+          drawingCtx.save();
+          drawingCtx.globalAlpha = shape.opacity;
+          drawingCtx.strokeStyle = shape.color;
+          drawingCtx.fillStyle = shape.color;
+          drawingCtx.lineWidth = shape.lineWidth;
+          if (shape.type === "pencil") {
+            drawingCtx.beginPath();
+            shape.points.forEach((pt, index) => {
+              let canvasPt = imageToCanvas(pt);
+              if (index === 0) drawingCtx.moveTo(canvasPt.x, canvasPt.y);
+              else drawingCtx.lineTo(canvasPt.x, canvasPt.y);
             });
-
-            loadDicomImage(imageList[0]); // Charger la première image par défaut
-
-            container.addEventListener("wheel", (event) => {
-                event.preventDefault();
-                const viewport = cornerstone.getViewport(container);
-                viewport.scale = Math.min(Math.max(viewport.scale + event.deltaY * -0.002, 0.5), 3);
-                cornerstone.setViewport(container, viewport);
-            });
-
-            let isPanning = false;
-            let lastX = 0, lastY = 0;
-
-            container.addEventListener("mousedown", (event) => {
-                if (event.button === 0) {
-                    isPanning = true;
-                    lastX = event.clientX;
-                    lastY = event.clientY;
-                    container.style.cursor = "grabbing";
-                }
-            });
-
-            container.addEventListener("mousemove", (event) => {
-                if (isPanning) {
-                    event.preventDefault();
-                    const deltaX = event.clientX - lastX;
-                    const deltaY = event.clientY - lastY;
-                    lastX = event.clientX;
-                    lastY = event.clientY;
-                    const viewport = cornerstone.getViewport(container);
-                    viewport.translation.x = Math.min(Math.max(viewport.translation.x + deltaX, -256), 256);
-                    viewport.translation.y = Math.min(Math.max(viewport.translation.y + deltaY, -256), 256);
-                    cornerstone.setViewport(container, viewport);
-                }
-            });
-
-            container.addEventListener("mouseup", () => {
-                isPanning = false;
-                container.style.cursor = "grab";
-            });
+            drawingCtx.lineCap = "round";
+            drawingCtx.stroke();
+          } else if (shape.type === "rectangle") {
+            let startCanvas = imageToCanvas(shape.start);
+            let endCanvas = imageToCanvas(shape.end);
+            let x = Math.min(startCanvas.x, endCanvas.x);
+            let y = Math.min(startCanvas.y, endCanvas.y);
+            let w = Math.abs(endCanvas.x - startCanvas.x);
+            let h = Math.abs(endCanvas.y - startCanvas.y);
+            drawingCtx.strokeRect(x, y, w, h);
+          } else if (shape.type === "circle") {
+            let centerCanvas = imageToCanvas(shape.center);
+            let edgeImage = { x: shape.center.x + shape.radius, y: shape.center.y };
+            let edgeCanvas = imageToCanvas(edgeImage);
+            let radiusCanvas = Math.hypot(edgeCanvas.x - centerCanvas.x, edgeCanvas.y - centerCanvas.y);
+            drawingCtx.beginPath();
+            drawingCtx.arc(centerCanvas.x, centerCanvas.y, radiusCanvas, 0, 2 * Math.PI);
+            drawingCtx.stroke();
+          } else if (shape.type === "polygon" || shape.type === "hexagon") {
+            let center = imageToCanvas(shape.center);
+            let radius = shape.radius * cornerstone.getViewport(container).scale;
+            let sides = shape.type === "polygon" ? 5 : 6;
+            drawRegularPolygon(drawingCtx, center, radius, sides);
+          } else if (shape.type === "arrow") {
+            let start = imageToCanvas(shape.start);
+            let end = imageToCanvas(shape.end);
+            drawingCtx.beginPath();
+            drawArrow(drawingCtx, start, end);
+          } else if (shape.type === "doubleArrow") {
+            let start = imageToCanvas(shape.start);
+            let end = imageToCanvas(shape.end);
+            drawingCtx.beginPath();
+            drawDoubleArrow(drawingCtx, start, end);
+          }
+          drawingCtx.restore();
         });
-    </script>
+        if (currentShape) {
+          drawingCtx.save();
+          drawingCtx.globalAlpha = currentShape.opacity;
+          drawingCtx.strokeStyle = currentShape.color;
+          drawingCtx.fillStyle = currentShape.color;
+          drawingCtx.lineWidth = currentShape.lineWidth;
+          if (currentShape.type === "pencil") {
+            drawingCtx.beginPath();
+            currentShape.points.forEach((pt, index) => {
+              let canvasPt = imageToCanvas(pt);
+              if (index === 0) drawingCtx.moveTo(canvasPt.x, canvasPt.y);
+              else drawingCtx.lineTo(canvasPt.x, canvasPt.y);
+            });
+            drawingCtx.lineCap = "round";
+            drawingCtx.stroke();
+          } else if (currentShape.type === "rectangle") {
+            let startCanvas = imageToCanvas(currentShape.start);
+            let endCanvas = imageToCanvas(currentShape.end);
+            let x = Math.min(startCanvas.x, endCanvas.x);
+            let y = Math.min(startCanvas.y, endCanvas.y);
+            let w = Math.abs(endCanvas.x - startCanvas.x);
+            let h = Math.abs(endCanvas.y - startCanvas.y);
+            drawingCtx.strokeRect(x, y, w, h);
+          } else if (currentShape.type === "circle") {
+            let centerCanvas = imageToCanvas(currentShape.center);
+            let edgeImage = { x: currentShape.center.x + currentShape.radius, y: currentShape.center.y };
+            let edgeCanvas = imageToCanvas(edgeImage);
+            let radiusCanvas = Math.hypot(edgeCanvas.x - centerCanvas.x, edgeCanvas.y - centerCanvas.y);
+            drawingCtx.beginPath();
+            drawingCtx.arc(centerCanvas.x, centerCanvas.y, radiusCanvas, 0, 2 * Math.PI);
+            drawingCtx.stroke();
+          } else if (currentShape.type === "polygon" || currentShape.type === "hexagon") {
+            let center = imageToCanvas(currentShape.center);
+            let radius = currentShape.radius * cornerstone.getViewport(container).scale;
+            let sides = currentShape.type === "polygon" ? 5 : 6;
+            drawRegularPolygon(drawingCtx, center, radius, sides);
+          } else if (currentShape.type === "arrow") {
+            let start = imageToCanvas(currentShape.start);
+            let end = imageToCanvas(currentShape.end);
+            drawingCtx.beginPath();
+            drawArrow(drawingCtx, start, end);
+          } else if (currentShape.type === "doubleArrow") {
+            let start = imageToCanvas(currentShape.start);
+            let end = imageToCanvas(currentShape.end);
+            drawingCtx.beginPath();
+            drawDoubleArrow(drawingCtx, start, end);
+          }
+          drawingCtx.restore();
+        }
+      }
+      
+      // Gestion des événements sur le canvas
+      drawingCanvas.addEventListener("mousedown", (event) => {
+        const canvasPos = { x: event.offsetX, y: event.offsetY };
+        const imagePos = canvasToImage(canvasPos);
+        if (currentTool === "pencil" ||
+            ["rectangle", "circle", "polygon", "hexagon", "arrow", "doubleArrow"].includes(currentTool)) {
+          isDrawing = true;
+          if (currentTool === "pencil") {
+            currentShape = {
+              type: "pencil",
+              points: [imagePos],
+              color: pencilColor,
+              lineWidth: pencilSize,
+              opacity: pencilOpacity
+            };
+          } else {
+            currentShape = {
+              type: currentTool,
+              start: imagePos,
+              end: imagePos,
+              center: imagePos,
+              radius: 0,
+              color: shapeColor,
+              lineWidth: shapeSize,
+              opacity: shapeOpacity
+            };
+          }
+        } else if (currentTool === "eraser") {
+          for (let i = shapes.length - 1; i >= 0; i--) {
+            if (hitTestShape(shapes[i], imagePos, 5)) {
+              shapes.splice(i, 1);
+              saveHistory();
+              redrawOverlay();
+              break;
+            }
+          }
+        }
+      });
+      
+      drawingCanvas.addEventListener("mousemove", (event) => {
+        if (!isDrawing || !currentShape) return;
+        const canvasPos = { x: event.offsetX, y: event.offsetY };
+        const imagePos = canvasToImage(canvasPos);
+        if (currentShape.type === "pencil") {
+          currentShape.points.push(imagePos);
+        } else {
+          currentShape.end = imagePos;
+          if (["circle", "polygon", "hexagon"].includes(currentShape.type)) {
+            currentShape.center = {
+              x: (currentShape.start.x + imagePos.x) / 2,
+              y: (currentShape.start.y + imagePos.y) / 2
+            };
+            const dx = imagePos.x - currentShape.start.x;
+            const dy = imagePos.y - currentShape.start.y;
+            currentShape.radius = Math.hypot(dx, dy) / 2;
+          }
+        }
+        redrawOverlay();
+      });
+      
+      drawingCanvas.addEventListener("mouseup", () => {
+        if (isDrawing && currentShape) {
+          shapes.push(currentShape);
+          currentShape = null;
+          isDrawing = false;
+          saveHistory();
+          redrawOverlay();
+        }
+      });
+      
+      drawingCanvas.addEventListener("mouseleave", () => {
+        if (isDrawing && currentShape) {
+          shapes.push(currentShape);
+          currentShape = null;
+          isDrawing = false;
+          saveHistory();
+          redrawOverlay();
+        }
+      });
+      
+      // Hit test pour les annotations
+      function hitTestShape(shape, point, threshold) {
+        if (shape.type === "rectangle") {
+          const minX = Math.min(shape.start.x, shape.end.x);
+          const maxX = Math.max(shape.start.x, shape.end.x);
+          const minY = Math.min(shape.start.y, shape.end.y);
+          const maxY = Math.max(shape.start.y, shape.end.y);
+          return (point.x >= minX - threshold && point.x <= maxX + threshold &&
+                  point.y >= minY - threshold && point.y <= maxY + threshold);
+        } else if (shape.type === "circle") {
+          const dx = point.x - shape.center.x;
+          const dy = point.y - shape.center.y;
+          const dist = Math.hypot(dx, dy);
+          return (Math.abs(dist - shape.radius) < threshold || dist < shape.radius);
+        } else if (["polygon", "hexagon"].includes(shape.type)) {
+          const center = shape.center;
+          const r = shape.radius;
+          return (point.x >= center.x - r - threshold && point.x <= center.x + r + threshold &&
+                  point.y >= center.y - r - threshold && point.y <= center.y + r + threshold);
+        } else if (["arrow", "doubleArrow"].includes(shape.type)) {
+          return distanceToSegment(point, shape.start, shape.end) < threshold;
+        } else if (shape.type === "pencil") {
+          for (let i = 0; i < shape.points.length - 1; i++) {
+            if (distanceToSegment(point, shape.points[i], shape.points[i+1]) < threshold) {
+              return true;
+            }
+          }
+          return false;
+        }
+        return false;
+      }
+      
+      function distanceToSegment(pt, v, w) {
+        const l2 = (w.x - v.x) ** 2 + (w.y - v.y) ** 2;
+        if (l2 === 0) return Math.hypot(pt.x - v.x, pt.y - v.y);
+        let t = ((pt.x - v.x) * (w.x - v.x) + (pt.y - v.y) * (w.y - v.y)) / l2;
+        t = Math.max(0, Math.min(1, t));
+        return Math.hypot(pt.x - (v.x + t * (w.x - v.x)), pt.y - (v.y + t * (w.y - v.y)));
+      }
+      
+      // Boutons Undo / Redo / Effacer tout
+      document.getElementById("undo-button").addEventListener("click", () => { undo(); });
+      document.getElementById("redo-button").addEventListener("click", () => { redo(); });
+      document.getElementById("clear-button").addEventListener("click", () => {
+        shapes = [];
+        saveHistory();
+        redrawOverlay();
+      });
+      
+      // Gestion des outils et affichage des options
+      const pencilButton = document.getElementById("pencil-button");
+      const shapesButton = document.getElementById("shapes-button");
+      const eraserButton = document.getElementById("eraser-button");
+      const pencilOptions = document.getElementById("pencil-options");
+      const shapeOptions = document.getElementById("shape-options");
+      
+      pencilButton.addEventListener("click", () => {
+        currentTool = "pencil";
+        pencilOptions.style.display = "flex";
+        shapeOptions.style.display = "none";
+      });
+      shapesButton.addEventListener("click", () => {
+        shapeOptions.style.display = shapeOptions.style.display === "flex" ? "none" : "flex";
+        pencilOptions.style.display = "none";
+        currentTool = document.getElementById("shape-select").value;
+      });
+      eraserButton.addEventListener("click", () => {
+        currentTool = "eraser";
+        pencilOptions.style.display = "none";
+        shapeOptions.style.display = "none";
+      });
+      
+      // Mise à jour dynamique des options
+      document.getElementById("pencil-size").addEventListener("change", (e) => { pencilSize = parseInt(e.target.value); });
+      document.getElementById("pencil-color").addEventListener("change", (e) => { pencilColor = e.target.value; });
+      document.getElementById("pencil-opacity").addEventListener("change", (e) => { pencilOpacity = parseFloat(e.target.value); });
+      document.getElementById("shape-size").addEventListener("change", (e) => { shapeSize = parseInt(e.target.value); });
+      document.getElementById("shape-color").addEventListener("change", (e) => { shapeColor = e.target.value; });
+      document.getElementById("shape-opacity").addEventListener("change", (e) => { shapeOpacity = parseFloat(e.target.value); });
+      document.getElementById("shape-select").addEventListener("change", (e) => { currentTool = e.target.value; });
+      
+      // Réglages de l'image : mise à jour du window center et window width
+      function updateWindowLevel() {
+        const viewport = cornerstone.getViewport(container);
+        viewport.windowCenter = parseFloat(document.getElementById("brightness-control").value);
+        viewport.windowWidth = parseFloat(document.getElementById("contrast-control").value);
+        // Réafficher l'image avec le viewport mis à jour
+        cornerstone.displayImage(container, loadedImage, viewport);
+      }
+      document.getElementById("brightness-control").addEventListener("input", updateWindowLevel);
+      document.getElementById("contrast-control").addEventListener("input", updateWindowLevel);
+      
+      // Gestion du zoom (molette) et du pan (clic central)
+      container.addEventListener("wheel", (event) => {
+        event.preventDefault();
+        const viewport = cornerstone.getViewport(container);
+        const newScale = viewport.scale + event.deltaY * -0.002;
+        viewport.scale = Math.min(Math.max(newScale, 0.5), 3);
+        cornerstone.setViewport(container, viewport);
+        redrawOverlay();
+      });
+      let isPanning = false;
+      let lastPan = { x: 0, y: 0 };
+      container.addEventListener("mousedown", (event) => {
+        if (event.button === 1) {
+          isPanning = true;
+          lastPan = { x: event.clientX, y: event.clientY };
+        }
+      });
+      container.addEventListener("mousemove", (event) => {
+        if (isPanning) {
+          const dx = event.clientX - lastPan.x;
+          const dy = event.clientY - lastPan.y;
+          lastPan = { x: event.clientX, y: event.clientY };
+          const viewport = cornerstone.getViewport(container);
+          viewport.translation.x += dx;
+          viewport.translation.y += dy;
+          cornerstone.setViewport(container, viewport);
+          redrawOverlay();
+        }
+      });
+      container.addEventListener("mouseup", () => { isPanning = false; });
+      container.addEventListener("mouseleave", () => { isPanning = false; });
+      
+      // Sauvegarde initiale de l'historique
+      saveHistory();
+    });
+  </script>
 </body>
 </html>
