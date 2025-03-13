@@ -2,14 +2,17 @@ const express = require('express');
 const path = require('path');
 
 const app = express();
-const port = 3000;
+const PORT = 3000;
 
-// Servir les fichiers statiques depuis "public"
-app.use(express.static('public'));
+// Servir les fichiers statiques depuis le dossier actuel
+app.use(express.static(__dirname));
 
-// Servir les fichiers de `node_modules`
-app.use('/modules', express.static(path.join(__dirname, 'node_modules')));
+// Route principale pour servir index.html
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public/index.html'));
+});
 
-app.listen(port, () => {
-    console.log(`🚀 Serveur lancé sur http://localhost:${port}`);
+// Lancer le serveur
+app.listen(PORT, () => {
+    console.log(`🚀 Serveur démarré sur http://localhost:${PORT}`);
 });

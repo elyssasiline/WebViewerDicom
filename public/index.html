@@ -1,186 +1,325 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Visualisation DICOM</title>
-
-    <!-- Charger les bibliothèques Cornerstone -->
-    <script src="https://unpkg.com/cornerstone-core@latest/dist/cornerstone.min.js"></script>
-    <script src="https://unpkg.com/cornerstone-math@latest/dist/cornerstoneMath.min.js"></script>
-    <script src="https://unpkg.com/cornerstone-wado-image-loader@latest/dist/cornerstoneWADOImageLoader.bundle.min.js"></script>
-    <script src="https://unpkg.com/dicom-parser@latest/dist/dicomParser.min.js"></script>
-    <script src="https://unpkg.com/cornerstone-tools@4.19.1/dist/cornerstoneTools.min.js"></script>
-
-    <style>
-        /* Styles généraux */
-        body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            background-color: #181818;
-            margin: 0;
-            color: white;
-            font-family: Arial, sans-serif;
-        }
-
-        /* Conteneur principal */
-        .container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-        }
-
-        /* Titre */
-        h1 {
-            font-size: 24px;
-            margin-bottom: 10px;
-            color: #00bcd4;
-        }
-
-        /* Explication des fonctionnalités */
-        .info-box {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            max-width: 500px;
-        }
-
-        /* Conteneur de l'image DICOM */
-        #dicom-container {
-            width: 512px;
-            height: 512px;
-            border: 2px solid #00bcd4;
-            border-radius: 8px;
-            background-color: black;
-            position: relative;
-            cursor: grab;
-            touch-action: none;
-        }
-
-        /* Pied de page */
-        .footer {
-            margin-top: 15px;
-            font-size: 14px;
-            opacity: 0.7;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <title>Viewerdicom</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- Utilisation de la police Roboto -->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+  
+  <!-- Chargement de Cornerstone et dépendances -->
+  <script src="https://unpkg.com/cornerstone-core@2/dist/cornerstone.js"></script>
+  <script src="https://unpkg.com/cornerstone-math@0/dist/cornerstoneMath.js"></script>
+  <script src="https://unpkg.com/dicom-parser@1/dist/dicomParser.js"></script>
+  <script src="https://unpkg.com/cornerstone-wado-image-loader@3/dist/cornerstoneWADOImageLoader.js"></script>
+  
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      font-family: 'Roboto', sans-serif;
+      background: linear-gradient(135deg, #2c3e50, #4ca1af);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      min-height: 100vh;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    header h1 {
+      font-size: 3rem;
+      margin: 0;
+      text-shadow: 2px 2px 8px rgba(0,0,0,0.5);
+    }
+    .toolbar {
+      margin-bottom: 15px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+    }
+    .toolbar button {
+      background-color: #00bcd4;
+      border: none;
+      color: white;
+      padding: 10px 16px;
+      font-size: 1rem;
+      cursor: pointer;
+      border-radius: 5px;
+      transition: background-color 0.3s, transform 0.2s;
+    }
+    .toolbar button:hover {
+      background-color: #008c9e;
+      transform: scale(1.02);
+    }
+    .toolbar button.active {
+      background-color: #008c9e;
+    }
+    #dicom-container {
+      position: relative;
+      width: 600px;
+      height: 600px;
+      border: 4px solid #00bcd4;
+      background: #000;
+      border-radius: 8px;
+      box-shadow: 0px 4px 12px rgba(0,0,0,0.5);
+      margin-bottom: 20px;
+    }
+    #annotation-canvas {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+  </style>
 </head>
 <body>
 
-    <div class="container">
-        <!-- Titre -->
-        <h1>Visualisation d'une image DICOM</h1>
+  <header>
+    <h1>Viewerdicom</h1>
+  </header>
 
-        <!-- Zone d'explication des fonctionnalités -->
-        <div class="info-box">
-            <p><strong>Fonctionnalités :</strong></p>
-            <ul style="text-align: left;">
-                <li>🔍 <strong>Zoom :</strong> Utilisez la molette de la souris ou pincez sur le trackpad.</li>
-                <li>✋ <strong>Déplacement (Pan) :</strong> Cliquez et glissez pour déplacer l'image.</li>
-            </ul>
-        </div>
+  <div class="toolbar">
+    <button id="panMode">Pan</button>
+    <button id="zoomMode">Zoom</button>
+    <button id="addAnnotation">Ajouter Texte</button>
+    <button id="addLine">Ajouter Ligne</button>
+    <button id="resetAnnotations">Réinitialiser</button>
+    <button id="downloadImage">Télécharger</button>
+  </div>
 
-        <!-- Conteneur de l'image DICOM -->
-        <div id="dicom-container"></div>
+  <div id="dicom-container">
+    <!-- Le canvas de l'image Cornerstone est créé automatiquement -->
+    <canvas id="annotation-canvas"></canvas>
+  </div>
 
-        <!-- Pied de page -->
-        <div class="footer">
-            ...
-        </div>
-    </div>
+  <script>
+    /***** Initialisation de Cornerstone *****/
+    const container = document.getElementById("dicom-container");
+    const annotationCanvas = document.getElementById("annotation-canvas");
+    const ctx = annotationCanvas.getContext("2d");
+    annotationCanvas.width = container.clientWidth;
+    annotationCanvas.height = container.clientHeight;
 
-    <script>
-        document.addEventListener("DOMContentLoaded", async function () {
-            console.log("🚀 Initialisation de la visualisation DICOM...");
+    cornerstoneWADOImageLoader.external.cornerstone = cornerstone;
+    cornerstoneWADOImageLoader.external.dicomParser = dicomParser;
+    cornerstone.enable(container);
 
-            const container = document.getElementById("dicom-container");
+    // Variable globale pour le PixelSpacing (en mm par pixel) – par défaut 1
+    let pixelSpacing = { x: 1, y: 1 };
 
-            // Vérification de la présence des bibliothèques
-            if (!cornerstone || !cornerstoneTools) {
-                console.error("❌ Cornerstone ou Cornerstone Tools ne sont pas chargés !");
-                return;
-            }
-            console.log("✅ Cornerstone et Tools chargés avec succès !");
+    // Charger l'image DICOM (à modifier selon votre URL)
+    const imageId = "wadouri:http://localhost:3000/public/dicom/image-00000.dcm";
+    cornerstone.loadImage(imageId).then((image) => {
+      cornerstone.displayImage(container, image);
+      // Récupération du PixelSpacing s'il existe (tag 0028,0030)
+      if (image.data && image.data.string("x00280030")) {
+        const spacingString = image.data.string("x00280030"); // ex: "0.5\\0.5"
+        const spacingArr = spacingString.split("\\");
+        pixelSpacing = {
+          x: parseFloat(spacingArr[0]),
+          y: parseFloat(spacingArr[1])
+        };
+      }
+      container.addEventListener("cornerstoneimagerendered", drawAnnotations);
+    }).catch((err) => {
+      console.error("Erreur de chargement DICOM :", err);
+    });
 
-            // Activation de Cornerstone sur l'élément
-            cornerstone.enable(container);
+    /***** Variables globales et modes *****/
+    // Modes possibles : "pan", "zoom", "annotationText", "annotationLine", "default"
+    let currentMode = "default";
+    let annotations = [];  // Stockage des annotations en coordonnées image
+    let lineStart = null;  // Pour tracer une ligne
 
-            // Configuration du loader WADO pour charger une image DICOM
-            cornerstoneWADOImageLoader.external.cornerstone = cornerstone;
-            cornerstoneWADOImageLoader.configure({
-                beforeSend: function (xhr) {
-                    xhr.setRequestHeader("Accept", "application/dicom");
-                },
-            });
+    // Pour le pan
+    let isPanning = false, lastX = 0, lastY = 0;
 
-            // Définir l'URL de l'image DICOM (Doit être accessible via un serveur)
-            const imageId = "wadouri:http://localhost:3000/dicom/image-00000.dcm";
+    /***** Fonctions de changement de mode *****/
+    function setMode(mode) {
+      currentMode = mode;
+      // Mise à jour visuelle des boutons actifs
+      document.querySelectorAll('.toolbar button').forEach(btn => btn.classList.remove('active'));
+      if (mode === "pan") document.getElementById("panMode").classList.add("active");
+      else if (mode === "zoom") document.getElementById("zoomMode").classList.add("active");
+      else if (mode === "annotationText") document.getElementById("addAnnotation").classList.add("active");
+      else if (mode === "annotationLine") document.getElementById("addLine").classList.add("active");
+    }
 
-            try {
-                console.log("🔄 Chargement de l'image DICOM...");
-                const image = await cornerstone.loadImage(imageId);
-                cornerstone.displayImage(container, image);
-                console.log("✅ Image DICOM chargée et affichée !");
-            } catch (error) {
-                console.error("❌ Erreur lors du chargement de l'image DICOM :", error);
-                return;
-            }
+    /***** Boutons du toolbar *****/
+    document.getElementById("panMode").addEventListener("click", () => { setMode("pan"); });
+    document.getElementById("zoomMode").addEventListener("click", () => { setMode("zoom"); });
+    document.getElementById("addAnnotation").addEventListener("click", () => { setMode("annotationText"); });
+    document.getElementById("addLine").addEventListener("click", () => { setMode("annotationLine"); });
+    document.getElementById("resetAnnotations").addEventListener("click", () => {
+      annotations = [];
+      drawAnnotations();
+      setMode("default");
+    });
+    document.getElementById("downloadImage").addEventListener("click", downloadFusion);
 
-            // 🎛️ Initialisation des outils Zoom & Pan
-            console.log("🎛️ Activation des outils Zoom et Pan...");
+    /***** Gestion des événements sur le conteneur *****/
+    // Mousedown
+    container.addEventListener("mousedown", (evt) => {
+      if (currentMode === "annotationText" && evt.button === 0) {
+        const imageCoords = cornerstone.pageToPixel(container, evt.pageX, evt.pageY);
+        const text = prompt("Entrez votre texte :");
+        if (text) {
+          annotations.push({ type: "text", x: imageCoords.x, y: imageCoords.y, text: text });
+          drawAnnotations();
+        }
+        setMode("default");
+      }
+      else if (currentMode === "annotationLine" && evt.button === 0) {
+        const startCoords = cornerstone.pageToPixel(container, evt.pageX, evt.pageY);
+        lineStart = { x: startCoords.x, y: startCoords.y };
+      }
+      else if (currentMode === "pan" && evt.button === 0) {
+        isPanning = true;
+        lastX = evt.pageX;
+        lastY = evt.pageY;
+      }
+    });
 
-            // 🔍 Zoom : Molette ou pinch sur le trackpad
-            container.addEventListener("wheel", (event) => {
-                event.preventDefault();
-                const viewport = cornerstone.getViewport(container);
-                viewport.scale += event.deltaY * -0.002;
-                cornerstone.setViewport(container, viewport);
-                console.log("🔍 Zoom appliqué : Scale =", viewport.scale);
-            });
+    // Mousemove
+    container.addEventListener("mousemove", (evt) => {
+      if (currentMode === "pan" && isPanning) {
+        const viewport = cornerstone.getViewport(container);
+        const dx = evt.pageX - lastX;
+        const dy = evt.pageY - lastY;
+        viewport.translation.x += dx;
+        viewport.translation.y += dy;
+        lastX = evt.pageX;
+        lastY = evt.pageY;
+        cornerstone.setViewport(container, viewport);
+      }
+      else if (currentMode === "annotationLine" && lineStart) {
+        drawAnnotations();
+        const currentCoords = cornerstone.pageToPixel(container, evt.pageX, evt.pageY);
+        const startCanvas = cornerstone.pixelToCanvas(container, lineStart);
+        const currentCanvas = cornerstone.pixelToCanvas(container, currentCoords);
+        ctx.beginPath();
+        ctx.strokeStyle = "#39FF14";
+        ctx.lineWidth = 2;
+        ctx.moveTo(startCanvas.x, startCanvas.y);
+        ctx.lineTo(currentCanvas.x, currentCanvas.y);
+        ctx.stroke();
+      }
+    });
 
-            // ✋ Pan : Clic gauche + glisser
-            let isPanning = false;
-            let lastX = 0, lastY = 0;
-
-            container.addEventListener("mousedown", (event) => {
-                if (event.button === 0) { // Clic gauche
-                    isPanning = true;
-                    lastX = event.clientX;
-                    lastY = event.clientY;
-                    container.style.cursor = "grabbing";
-                    console.log("✋ Début du Pan : (", lastX, ",", lastY, ")");
-                }
-            });
-
-            container.addEventListener("mousemove", (event) => {
-                if (isPanning) {
-                    event.preventDefault();
-                    const deltaX = event.clientX - lastX;
-                    const deltaY = event.clientY - lastY;
-                    lastX = event.clientX;
-                    lastY = event.clientY;
-
-                    const viewport = cornerstone.getViewport(container);
-                    viewport.translation.x += deltaX;
-                    viewport.translation.y += deltaY;
-                    cornerstone.setViewport(container, viewport);
-                    console.log("✋ Pan en cours : Translation =", viewport.translation);
-                }
-            });
-
-            container.addEventListener("mouseup", () => {
-                isPanning = false;
-                container.style.cursor = "grab";
-                console.log("✅ Fin du Pan");
-            });
-
-            console.log("✅ Outils prêts !");
+    // Mouseup
+    container.addEventListener("mouseup", (evt) => {
+      if (currentMode === "pan" && evt.button === 0) {
+        isPanning = false;
+      }
+      else if (currentMode === "annotationLine" && lineStart && evt.button === 0) {
+        const endCoords = cornerstone.pageToPixel(container, evt.pageX, evt.pageY);
+        annotations.push({
+          type: "line",
+          start: { x: lineStart.x, y: lineStart.y },
+          end: { x: endCoords.x, y: endCoords.y }
         });
-    </script>
+        lineStart = null;
+        setMode("default");
+        drawAnnotations();
+      }
+    });
 
+    // Gestion du zoom par molette (actif uniquement en mode zoom)
+    container.addEventListener("wheel", (evt) => {
+      if (currentMode === "zoom") {
+        evt.preventDefault();
+        const viewport = cornerstone.getViewport(container);
+        const zoomFactor = 1.1;
+        if (evt.deltaY < 0) {
+          viewport.scale *= zoomFactor;
+        } else {
+          viewport.scale /= zoomFactor;
+        }
+        cornerstone.setViewport(container, viewport);
+      }
+    });
+
+    /***** Fonction de dessin des annotations *****/
+    function drawAnnotations() {
+      ctx.clearRect(0, 0, annotationCanvas.width, annotationCanvas.height);
+      annotations.forEach((ann) => {
+        if (ann.type === "text") {
+          const anchorCanvas = cornerstone.pixelToCanvas(container, { x: ann.x, y: ann.y });
+          // Décalage de 70px vers la droite en coords canvas
+          const textOffsetX = 70, textOffsetY = 0;
+          const textCanvas = { x: anchorCanvas.x + textOffsetX, y: anchorCanvas.y + textOffsetY };
+          ctx.setLineDash([5, 5]);
+          ctx.beginPath();
+          ctx.moveTo(anchorCanvas.x, anchorCanvas.y);
+          ctx.lineTo(textCanvas.x - 10, textCanvas.y);
+          ctx.strokeStyle = "#fff";
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.font = "14px Arial";
+          const textWidth = ctx.measureText(ann.text).width;
+          const textHeight = 14;
+          ctx.fillStyle = "rgba(255,255,255,0.8)";
+          ctx.fillRect(textCanvas.x - 3, textCanvas.y - textHeight, textWidth + 6, textHeight + 4);
+          ctx.fillStyle = "black";
+          ctx.fillText(ann.text, textCanvas.x, textCanvas.y);
+        }
+        else if (ann.type === "line") {
+          const startCanvas = cornerstone.pixelToCanvas(container, ann.start);
+          const endCanvas = cornerstone.pixelToCanvas(container, ann.end);
+          ctx.beginPath();
+          ctx.moveTo(startCanvas.x, startCanvas.y);
+          ctx.lineTo(endCanvas.x, endCanvas.y);
+          ctx.strokeStyle = "#39FF14";
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          // Calcul de la distance physique en mm puis conversion en cm
+          const dx = ann.end.x - ann.start.x;
+          const dy = ann.end.y - ann.start.y;
+          const distanceMM = Math.sqrt((dx * pixelSpacing.x) ** 2 + (dy * pixelSpacing.y) ** 2);
+          const distanceCM = distanceMM / 10;
+          const midX = (startCanvas.x + endCanvas.x) / 2;
+          const midY = (startCanvas.y + endCanvas.y) / 2;
+          ctx.fillStyle = "red";
+          ctx.font = "14px Arial";
+          ctx.fillText(`${distanceCM.toFixed(2)} cm`, midX, midY);
+        }
+      });
+    }
+
+    /***** Fonction de téléchargement *****/
+    function downloadFusion() {
+      const canvases = container.querySelectorAll("canvas");
+      let baseCanvas = null;
+      canvases.forEach((canvasEl) => {
+        if (canvasEl.id !== "annotation-canvas") {
+          baseCanvas = canvasEl;
+        }
+      });
+      if (!baseCanvas) {
+        console.error("Base canvas introuvable");
+        return;
+      }
+      const tempCanvas = document.createElement("canvas");
+      tempCanvas.width = container.clientWidth;
+      tempCanvas.height = container.clientHeight;
+      const tempCtx = tempCanvas.getContext("2d");
+      tempCtx.drawImage(baseCanvas, 0, 0);
+      tempCtx.drawImage(annotationCanvas, 0, 0);
+      const link = document.createElement("a");
+      link.download = "dicom_annotated.png";
+      link.href = tempCanvas.toDataURL("image/png");
+      link.click();
+    }
+  </script>
 </body>
 </html>
