@@ -76,14 +76,14 @@ const DICOMViewer = ({ dicomFiles = [] }) => {
                     className="px-3 py-1 bg-blue-500 text-white rounded-md"
                     disabled={currentIndex === 0}
                 >
-                    ⬅️
+                    ↼
                 </button>
                 <button
                     onClick={() => setCurrentIndex((prev) => Math.min(prev + 1, dicomFiles.length - 1))}
                     className="px-3 py-1 bg-blue-500 text-white rounded-md"
                     disabled={currentIndex === dicomFiles.length - 1}
                 >
-                    ➡️
+                    ⇀
                 </button>
             </div>
         </div>

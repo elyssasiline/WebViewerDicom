@@ -78,8 +78,8 @@ export const TaskDetails = ({ isOpen, onClose, taskData: data }) => {
                     </ModalBody>
 
                     <ModalFooter>
-                        <Button onPress={() => setSelectedForm(Math.max(selectedForm - 1, 0))}>⬅️</Button>
-                        <Button onPress={() => setSelectedForm(Math.min(selectedForm + 1, totalPages - 1))}>➡️</Button>
+                        <Button onPress={() => setSelectedForm(Math.max(selectedForm - 1, 0))}>↼</Button>
+                        <Button onPress={() => setSelectedForm(Math.min(selectedForm + 1, totalPages - 1))}>⇀</Button>
                     </ModalFooter>
                 </ModalContent>
             )}
