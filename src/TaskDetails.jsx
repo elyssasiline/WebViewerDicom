@@ -8,6 +8,7 @@ import DICOMViewer from "./DICOMViewer";
 export const TaskDetails = ({ isOpen, onClose, taskData: data }) => {
     const [selectedForm, setSelectedForm] = useState(0);
     const [uploadedFiles, setUploadedFiles] = useState([]); // 📌 Stocke les fichiers DICOM sélectionnés
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const date = data && data["date"] ? new Date(GetDateTimestamp(data["date"])) : null;
 
     const formsInRow = useMemo(() => {
@@ -27,6 +28,16 @@ export const TaskDetails = ({ isOpen, onClose, taskData: data }) => {
     
         setUploadedFiles(prevFiles => [...prevFiles, ...urls]);
     };
+
+    const changeImage = (direction) => {
+        setCurrentImageIndex(prevIndex => {
+            let newIndex = prevIndex + direction;
+            if (newIndex < 0) newIndex = uploadedFiles.length - 1; // Revient à la dernière image
+            if (newIndex >= uploadedFiles.length) newIndex = 0; // Revient à la première image
+            return newIndex;
+        });
+    };
+    
     
 
     return (
@@ -41,7 +52,7 @@ export const TaskDetails = ({ isOpen, onClose, taskData: data }) => {
                         {isOpen && (
                             <div className="flex flex-col">
                                 {selectedForm === formsInRow.length ? (
-                                    <DICOMViewer dicomFiles={uploadedFiles} />
+                                    <DICOMViewer dicomFiles={[uploadedFiles[currentImageIndex]]} />
                                 ) : (
                                     <>
                                         <FormInterpreter data={data} form={formsInRow[selectedForm]} />
@@ -56,6 +67,13 @@ export const TaskDetails = ({ isOpen, onClose, taskData: data }) => {
                                                     onChange={handleFileUpload}
                                                     className="block w-full border border-gray-300 rounded-md p-2 mt-2"
                                                 />
+                                        {selectedForm === formsInRow.length && uploadedFiles.length > 1 && (
+                                            <div className="flex justify-center gap-4 mt-2">
+                                                <Button onPress={() => changeImage(-1)}>↼ Image précédente</Button>
+                                                <Button onPress={() => changeImage(1)}>⇀ Image suivante</Button>
+                                            </div>
+                                        )}
+
                                             </div>
                                         )}
 

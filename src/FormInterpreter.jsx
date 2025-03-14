@@ -43,47 +43,22 @@ const interpretElement = ({ element, data, index, dicomUrl }) => {
 
     else if (element.field_type == "select") {
 
-        return <Select selectedKeys={[data]} size="sm" label={capitalize(element.field_label)} className="!text-zinc-200">
-            {element.select_options && element.select_options.map(option => <SelectItem key={option.label} className="text-zinc-200">
-                {option.label}
-            </SelectItem>)}
+        return <Select selectedKeys={[data]} size="sm" label="Praticien" className="!text-zinc-200">
+            {[
+                "Généraliste",
+                "Cardiologue",
+                "Dermatologue",
+                "Ophtalmologue",
+                "Pédiatre",
+                "Radiologue",
+                "Chirurgien",
+                "Psychiatre"
+            ].map(specialty => (
+                <SelectItem key={specialty} className="text-zinc-200">
+                    {specialty}
+                </SelectItem>
+            ))}
         </Select>
-    }
-    else if (element.field_type == "picturepicker") {
-        return <div className="flex flex-col">
-            <p className="text-xs mb-1   text-zinc-400 p-0">{element.field_label || element.field_key} :</p>
-            <div className="flex gap-4 p-2 justify-between w-fit bg-zinc-100  rounded-xl">
-                <Avatar src="https://media.istockphoto.com/id/469538141/fr/photo/jeune-plant.jpg?s=612x612&w=0&k=20&c=YusPoy6PHk7ai5y4iMzgx_RpVJjcmvyVelmfUBkUSKk=" size="lg" radius="lg" />
-                <Button color="default" isDisabled size="sm" className="h-auto"><RiEdit2Fill className="size-4" /></Button>
-            </div>
-        </div>
-    }
-
-    else if (element.field_type == "sections") {
-        return (
-            <div className="flex flex-col" key={index}>
-                <p className="text-xs mb-1 text-zinc-400 p-0">{element.field_label || element.field_key} :</p>
-                <Accordion className="!px-0" isCompact>
-                    {data.map((section, i) => {
-                        const sectionForm = element.field_children.find(e => e.field_label == data[i].$label);
-                        return (
-                            <AccordionItem key={i} title={data[i].$label}>
-                                <div className="flex gap-2 flex-col">
-                                    {sectionForm.field_children.map(sectionElement =>
-                                        interpretElement({
-                                            element: sectionElement,
-                                            data: data[i][sectionElement.field_key],
-                                            index: i,
-                                            dicomUrl,
-                                        })
-                                    )}
-                                </div>
-                            </AccordionItem>
-                        );
-                    })}
-                </Accordion>
-            </div>
-        );
     }
 }
 
